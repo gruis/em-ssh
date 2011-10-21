@@ -1,6 +1,6 @@
 require 'em-ssh'
 
-module Em
+module EM
   class Ssh < EventMachine::Connection
     class Shell 
       include Log
@@ -147,7 +147,7 @@ module Em
       # @return
       def connect
         f = Fiber.current
-        Cspoc::Ssh::Em.start(host, user, connect_opts) do |connection|
+        ::EM::Ssh.start(host, user, connect_opts) do |connection|
           @connection = connection
           f.resume
         end # |connection|
@@ -194,4 +194,4 @@ module Em
 
     end # class::Shell
   end # class::Ssh < EventMachine::Connection
-end # module::Cspoc
+end # module::EM
