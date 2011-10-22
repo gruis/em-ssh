@@ -51,7 +51,7 @@ module EventMachine
       attr_reader :parent
       # @return [String] a string (\r\n) to append to every command
       def line_terminator
-        @line_terminator ||= "\r\n"
+        @line_terminator ||= "\n"
       end
       # [String]
       attr_writer :line_terminator
@@ -125,7 +125,6 @@ module EventMachine
       # @return [String] the contents of the buffer
       def wait_for(strregex, opts = { })
         raise ClosedChannel if closed?
-        open if shell.nil?
         debug("wait_for(#{strregex.inspect}, #{opts})")
         opts      = { :timeout => @timeout, :halt_on_timeout => @halt_on_timeout }.merge(opts)
         buffer    = ''

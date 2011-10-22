@@ -47,27 +47,25 @@ abort("command is required") if commands.empty?
 
 
 EM.run do
-  Fiber.new {
-    shell = EM::Ssh::Shell.new(host, options[:user], options[:password])
-     commands.each do |command|
-       mys = shell.split
-       mys.on(:closed) { info("#{mys} has closed") }
-     
-       EM.next_tick do
-         Fiber.new {
-           debug("#{mys} waited for: '#{mys.wait_for(waitstr)}'")
-           mys.line_terminator = "\n"
-           debug("#{mys} send: #{command.inspect}")
-           puts "#{mys} result: '#{mys.send_and_wait(command, waitstr)}'"
-           mys.close        
-         }.resume
-       end # 
-     end #  |command|
-     
-     shell.on(:childless) do
-       info("#{shell}'s children all closed")
-       shell.close
-       EM.stop
-     end # :childless
-  }.resume  
+  EM::Ssh::Shell.new(host, options[:user], options[:password]) do |shell|
+    commands.each do |command|
+      mys = shell.split
+      mys.on(:closed) { info("#{mys} has closed") }
+      
+      EM.next_tick do
+        Fiber.new {
+          debug("#{mys} waited for: '#{mys.wait_for(waitstr)}'")
+          debug("#{mys} send: #{command.inspect}")
+          puts "#{mys} result: '#{mys.send_and_wait(command, waitstr)}'"
+          mys.close
+        }.resume
+      end
+    end #  |command|
+    
+    shell.on(:childless) do
+      info("#{shell}'s children all closed")
+      shell.close
+      EM.stop
+    end # :childless
+  end #  |shell|
 end # EM.run

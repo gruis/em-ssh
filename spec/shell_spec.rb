@@ -25,7 +25,6 @@ describe "Ssh::Shell" do
         shell.should be_a(EventMachine::Ssh::Shell)
         shell.wait_for(']$')
         shell.send_and_wait('uname -a', ']$').should include("GNU/Linux")
-        shell.wait_for(']$')
         shell.send_and_wait('/sbin/ifconfig -a', ']$').should include("eth0")
         timer.cancel
         EM.stop
