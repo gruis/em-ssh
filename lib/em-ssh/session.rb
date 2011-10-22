@@ -9,9 +9,15 @@ module EM
         register_callbacks
       end
       
-      # Override the default, blocking behavior of Net::SSH
+      # Override the default, blocking behavior of Net::SSH.
+      # Callers to loop will still wait, but not block the loop.
       def loop(wait=nil, &block)
-        return
+        f = Fiber.current
+        l = proc do 
+          block.call ? EM.next_tick(&l) : f.resume
+        end
+        EM.next_tick(&l)
+        return Fiber.yield
       end
       
       # Override the default, blocking behavior of Net::SSH

@@ -46,6 +46,17 @@ abort("wait_string is required") if waitstr.nil?
 abort("command is required") if commands.empty?
 
 EM.run do
+  EM::Ssh.start(host, options[:user], :password => options[:password]) do |ssh|
+    ssh.exec!('uname -a').tap {|r| puts "uname: #{r}"}
+    ssh.exec("hostname") do |ch,stream,data|
+      puts "hostname: #{data}"
+    end #  |res|
+  end #  |ssh|
+end
+
+
+__END__
+EM.run do
   Fiber.new {
     shell = EM::Ssh::Shell.new(host, options[:user], options[:password])
      commands.each do |command|

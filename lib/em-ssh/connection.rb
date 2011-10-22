@@ -215,8 +215,10 @@ module EM
           end #  |p|
         end
 
-      private
 
+
+
+      private
 
         # Register the primary :data callback
         # @return [Callback] the callback that was registered
