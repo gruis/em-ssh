@@ -56,8 +56,11 @@ See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/
 Em-ssh provides an exepct-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
 
 ### Example
+	require 'em-ssh'
+	require 'em-ssh/shell'
 	EM.run {
-		EM::Ssh::Shell.new(host, 'caleb', 'password') do	|shell|
+		Fiber.new {
+			shell = EM::Ssh::Shell.new(host, 'caleb', 'password')
 			shell.wait_for(']$')
 			shell.send_and_wait('sudo su -', 'password for caleb: ')
 			shell.send_and_wait('password', ']$')
@@ -65,7 +68,7 @@ Em-ssh provides an exepct-like shell abstraction layer on top of net-ssh in EM::
 			# ...
 			shell.send_and_wait('exit', ']$')
 			shell.send_data('exit')
-		end
+		}.resume
 	}
 
 
