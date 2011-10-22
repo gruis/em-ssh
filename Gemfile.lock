@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    em-ssh (0.0.0)
+    em-ssh (0.0.2)
       eventmachine
       net-ssh
 

@@ -76,7 +76,7 @@ module EventMachine
         @parent          = opts[:parent]
         @children        = []
         
-        block_given? ? open(&blk) : open
+        block_given? ? Fiber.new { open(&blk) }.resume : open
       end
       
       # Close the connection to the server and all child shells.
@@ -125,7 +125,8 @@ module EventMachine
       # @return [String] the contents of the buffer
       def wait_for(strregex, opts = { })
         raise ClosedChannel if closed?
-        debug("wait_for(#{strregex}, #{opts})")
+        open if shell.nil?
+        debug("wait_for(#{strregex.inspect}, #{opts})")
         opts      = { :timeout => @timeout, :halt_on_timeout => @halt_on_timeout }.merge(opts)
         buffer    = ''
         found     = nil
@@ -146,9 +147,8 @@ module EventMachine
           buffer = "#{buffer}#{data}"
           if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
             timer.respond_to?(:cancel) && timer.cancel
-            result = buffer.clone
             shell.on_data {|c,d| }
-            f.resume(result)
+            f.resume(buffer)
           end
         end #  |ch,data|
         
@@ -159,7 +159,8 @@ module EventMachine
       # Open a shell on the server.
       # You generally don't need to call this.
       # @return [self]
-      def open
+      def open(&blk)
+        debug("open(#{blk})")
         f = Fiber.current
         connect unless connected?
         
@@ -171,6 +172,7 @@ module EventMachine
               raise ConnectionError, "Failed to create shell." unless success
               debug "***** shell open: #{shell}"
               @shell = shell
+              Fiber.new { yield(self) if block_given? }.resume
               f.resume(self)
             end # |shell,success|
           end # |pty,suc|
@@ -201,6 +203,7 @@ module EventMachine
       # Does not open the shell; use #open or #split
       # You generally won't need to call this on your own.
       def connect
+        return if connected?
         f = Fiber.current
         ::EM::Ssh.start(host, user, connect_opts) do |connection|
           @connection = connection
@@ -215,7 +218,7 @@ module EventMachine
       # @see #send_and_wait
       # @param [String] d the data to send encoded as a string
       def send_data(d)
-        #debug("send_data: #{d.inspect}#{line_terminator}")
+        #debug("send_data: #{d.dump}#{line_terminator.dump}")
         shell.send_data("#{d}#{line_terminator}")
       end
       

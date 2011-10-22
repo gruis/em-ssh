@@ -56,11 +56,24 @@ See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/
 Em-ssh provides an exepct-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
 
 ### Example
-	require 'em-ssh'
+	require 'em-ssh/shell'
+	EM.run {
+	  EM::Ssh::Shell.new(host, 'caleb', "") do |shell|
+	    shell.should be_a(EventMachine::Ssh::Shell)
+	    shell.wait_for(']$')
+	    shell.send_and_wait('uname -a', ']$')
+	    shell.wait_for(']$')
+	    shell.send_and_wait('/sbin/ifconfig -a', ']$')
+	    timer.cancel
+	    EM.stop
+	  end
+	}
+
+#### Synchrony Example
 	require 'em-ssh/shell'
 	EM.run {
 		Fiber.new {
-			shell = EM::Ssh::Shell.new(host, 'caleb', 'password')
+			shell = EM::Ssh::Shell.new(host, 'caleb', '')
 			shell.wait_for(']$')
 			shell.send_and_wait('sudo su -', 'password for caleb: ')
 			shell.send_and_wait('password', ']$')
@@ -77,6 +90,11 @@ Em-ssh provides an exepct-like shell abstraction layer on top of net-ssh in EM::
 See bin/em-ssh for an example of a basic replacement for system ssh.
 
 See bin/em-ssh-shell for a more complex example usage of Shell.
+
+## Known Issues
+
+Em-ssh relies on Fibers. MRI 1.9.2-p290 on OSX Lion has been known to segfault when using Fibers.
+
 
 
 ##Copyright
