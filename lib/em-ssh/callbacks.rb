@@ -1,4 +1,4 @@
-module EM
+module EventMachine
   class Ssh
     # A simple mixin enabling your objects to allow other objects to register callbacks and fire events.
     # @example
@@ -96,4 +96,4 @@ module EM
       
     end # module::Callbacks
   end # class::Ssh
-end # module::EM
+end # module::EventMachine

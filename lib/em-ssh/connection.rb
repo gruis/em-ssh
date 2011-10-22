@@ -1,10 +1,10 @@
 require 'em-ssh/callbacks'
-module EM
-  # EM::Ssh is a EventMachine::Connection that emulates the Net::SSH transport layer. It ties itself into
-  # Net::SSH so that the EventMachine reactor loop can take the place of the Net::SSH event loop.
+module EventMachine
   class Ssh
+    # EventMachine::Ssh::Connection is a EventMachine::Connection that emulates the Net::SSH transport layer. It ties
+    # itself into Net::SSH so that the EventMachine reactor loop can take the place of the Net::SSH event loop.
+    # Most of the methods here are only for compatibility with Net::SSH
     class Connection < EventMachine::Connection
-        # Provides the #log methods
         include Log
         
         # Allows other objects to register callbacks with events that occur on a Ssh instance
@@ -13,43 +13,42 @@ module EM
         ##
         # Transport related
         
-        # The host to connect to, as given to the constructor.
+        # @return [String] The host to connect to, as given to the constructor.
         attr_reader :host
         
-        # The port number to connect to, as given in the options to the constructor.
-        # If no port number was given, this will default to DEFAULT_PORT.
+        # @return [Fixnum] the port number (DEFAULT_PORT) to connect to, as given in the options to the constructor.
         attr_reader :port
         
-        # The ServerVersion instance that encapsulates the negotiated protocol
-        # version.
+        # @return [ServerVersion] The ServerVersion instance that encapsulates the negotiated protocol version.
         attr_reader :server_version
         
         # The Algorithms instance used to perform key exchanges.
         attr_reader :algorithms
 
-        # The host-key verifier object used to verify host keys, to ensure that
-        # the connection is not being spoofed.
+        # The host-key verifier object used to verify host keys, to ensure that the connection is not being spoofed.
         attr_reader :host_key_verifier
 
         # The hash of options that were given to the object at initialization.
         attr_reader :options
-
+        
+        # @return [PacketStream] emulates a socket and ssh packetstream
+        attr_reader :socket
+        
+        # @return [Boolean] true if the connection has been closed
         def closed?
           @closed == true
-        end # closed?
-
-        def socket
-          @socket
-        end # socket
-
+        end
+        
+        # Close the connection
         def close
           # #unbind will update @closed
           close_connection
-        end # close
-
+        end
+        
+        # Send a packet to the server
         def send_message(message)
           @socket.send_packet(message)
-        end # send_messsge(message)
+        end
         alias :enqueue_message :send_message
 
         def next_message
@@ -71,8 +70,7 @@ module EM
         end
 
         # Requests a rekey operation, and simulates a block until the operation completes.
-        # If a rekey is already pending, this returns immediately, having no
-        # effect.
+        # If a rekey is already pending, this returns immediately, having no effect.
         def rekey!
           if !algorithms.pending?
             f = Fiber.current
@@ -82,8 +80,8 @@ module EM
             algorithms.rekey!
             return Fiber.yield
           end
-        end # rekey!
-
+        end
+        
         # Returns immediately if a rekey is already in process. Otherwise, if a
         # rekey is needed (as indicated by the socket, see PacketStream#if_needs_rekey?)
         # one is performed, causing this method to block until it completes.
@@ -106,13 +104,13 @@ module EM
         def unbind
           debug("#{self} is unbound")
           @closed = true
-        end # unbind
+        end
 
         def receive_data(data)
           debug("read #{data.length} bytes")
           @data.append(data)
           fire(:data, data)
-        end # receive_data(data)
+        end
 
 
 
@@ -212,7 +210,7 @@ module EM
             p[:port] = @port.to_i
             p[:host] = @host
             p[:canonized] = host_as_string
-          end #  |p|
+          end
         end
 
 
@@ -274,6 +272,6 @@ module EM
         
     end # class::Connection < EventMachine::Connection
   end # module::Ssh
-end # module::EM
+end # module::EventMachine
 
 

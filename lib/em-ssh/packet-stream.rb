@@ -1,5 +1,4 @@
-
-module EM
+module EventMachine
   class Ssh
     class PacketStream
       include Net::SSH::BufferedIo
@@ -152,4 +151,4 @@ module EM
       
     end # class::PacketStream
   end # class::Ssh
-end # module::EM
+end # module::EventMachine

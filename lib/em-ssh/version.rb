@@ -1,5 +1,5 @@
-module EM
+module EventMachine
   class Ssh
     VERSION='0.0.0'
   end # class::Ssh
-end # module::EM
+end # module::EventMachine

@@ -1,29 +1,30 @@
-module EM
+module EventMachine
   class Ssh
     module Log
+      # @return [Logger] the default logger
       def log
-        EM::Ssh.logger
-      end # log
+        EventMachine::Ssh.logger
+      end
       
       def debug(msg = nil, &blk)
         log.debug("#{self.class}".downcase.gsub("::",".") + " #{msg}", &blk)
-      end # debug
+      end
       
       def info(msg = nil, &blk)
         log.info("#{self.class}".downcase.gsub("::",".") + " #{msg}", &blk)
-      end # fatal
+      end
       
       def fatal(msg = nil, &blk)
         log.fatal("#{self.class}".downcase.gsub("::",".") + " #{msg}", &blk)
-      end # fatal
+      end
       
       def warn(msg = nil, &blk)
         log.warn("#{self.class}".downcase.gsub("::",".") + " #{msg}", &blk)
-      end # warn
+      end
       
       def error(msg = nil, &blk)
         log.error("#{self.class}".downcase.gsub("::",".") + " #{msg}", &blk)
-      end # error
+      end
     end # module::Log
   end # class::Ssh
-end # module::EM
+end # module::EventMachine

@@ -1,5 +1,5 @@
 
-module EM
+module EventMachine
   class Ssh
     class Session < Net::SSH::Connection::Session
       include Log
@@ -48,4 +48,4 @@ module EM
 
     end # class::Session
   end # class::Ssh
-end # module::EM
+end # module::EventMachine

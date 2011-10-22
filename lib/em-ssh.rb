@@ -6,7 +6,7 @@ require 'timeout'
 require 'net/ssh'
 require 'em-ssh/log'
 
-module EM
+module EventMachine
   # @example
   #   EM::Ssh.start(host, user, :password => password) do |ssh|
   #    ssh.exec("hostname") do |ch,stream,data|
@@ -25,6 +25,8 @@ module EM
     
     class << self
       attr_writer :logger
+      # Creates a logger when necessary
+      # @return [Logger]
       def logger(level = Logger::WARN)
         @logger ||= ::Logger.new(STDERR).tap{ |l| l.level = level }
       end
@@ -35,6 +37,7 @@ module EM
       # @param [Hash] opts all options accepted by Net::SSH.start
       # @yield [Session]  an EventMachine compatible Net::SSH::Session
       # @see http://net-ssh.github.com/ssh/v2/api/index.html
+      # @return [Session]
       # @example 
       #   EM::Ssh.start(host, user, options) do |connection|
       #    log.debug "**** connected: #{connection}"
@@ -60,7 +63,7 @@ module EM
     end #  |module|
     
   end # class::Ssh
-end # module::EM
+end # module::EventMachine
 
 
 require 'em-ssh/callbacks'

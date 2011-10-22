@@ -1,4 +1,4 @@
-module EM
+module EventMachine
   class Ssh
     class ServerVersion
       include Log
@@ -9,7 +9,7 @@ module EM
       def initialize(connection)
         debug("#{self}.new(#{connection})")
         negotiate!(connection)
-      end # initialize(connection)
+      end
       
       
     private
@@ -30,8 +30,8 @@ module EM
             connection.fire(:version_negotiated)
           end # @header[-1] == "\n"
         end #  |data|
-      end # negotiate!(connection)
+      end
 
     end # class::ServerVersion
   end # module::Ssh
-end # module::EM
+end # module::EventMachine

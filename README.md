@@ -1,15 +1,80 @@
 #EM-SSH
+Em-ssh is a net-ssh adapter for EventMachine. For the most part you can take any net-ssh code you have and run it in the EventMachine reactor.
+
+Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.com/) library. Please report any bugs with em-ssh to [https://github.com/simulacre/em-ssh/issues](https://github.com/simulacre/em-ssh/issues)
+##Installation
+	gem install em-ssh
 
 ##Synopsis
-	EM::Ssh.start(host, user, :password => password) do |ssh|
-	  ssh.exec("hostname") do |ch,stream,data|
-	    puts "data: #{data}"
+	EM.run do
+	  EM::Ssh.start(host, user, :password => password) do |ssh|
+	    # capture all stderr and stdout output from a remote process
+	    ssh.exec!('uname -a').tap {|r| puts "\nuname: #{r}"}
+    
+	    # capture only stdout matching a particular pattern
+	    stdout = ""
+	    ssh.exec!("ls -l /home") do |channel, stream, data|
+	      stdout << data if stream == :stdout
+	    end
+	    puts "\n#{stdout}"
+    
+	    # run multiple processes in parallel to completion
+	    ssh.exec('ping -c 1 www.google.com')
+	    ssh.exec('ping -c 1 www.yahoo.com')
+	    ssh.exec('ping -c 1 www.rakuten.co.jp')
+    
+	    #open a new channel and configure a minimal set of callbacks, then wait for the channel to finishes (closees).
+	    channel = ssh.open_channel do |ch|
+	      ch.exec "/usr/local/bin/ruby /path/to/file.rb" do |ch, success|
+	        raise "could not execute command" unless success
+    
+	        # "on_data" is called when the process writes something to stdout
+	        ch.on_data do |c, data|
+	          $stdout.print data
+	        end
+        
+	        # "on_extended_data" is called when the process writes something to stderr
+	        ch.on_extended_data do |c, type, data|
+	          $stderr.print data
+	        end
+        
+	        ch.on_close { puts "done!" }
+	      end
+	    end
+    
+	    channel.wait
+
+	    ssh.close
+	    EM.stop
 	  end
 	end
 
+See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/ssh/v2/api/index.html)
 
-##TODO
- - Support Session#exec!
+##Shell
+ 
+Em-ssh provides an exepct-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
+
+### Example
+	EM.run {
+		EM::Ssh::Shell.new(host, 'caleb', 'password') do	|shell|
+			shell.wait_for(']$')
+			shell.send_and_wait('sudo su -', 'password for caleb: ')
+			shell.send_and_wait('password', ']$')
+			output = shell.send_and_wait('/etc/init.d/openvpn restart', ']$')
+			# ...
+			shell.send_and_wait('exit', ']$')
+			shell.send_data('exit')
+		end
+	}
+
+
+
+## Other Examples
+See bin/em-ssh for an example of a basic replacement for system ssh.
+
+See bin/em-ssh-shell for a more complex example usage of Shell.
+
 
 ##Copyright
 Copyright (c) 2011 Caleb Crane

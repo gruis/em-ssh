@@ -1,6 +1,6 @@
 require 'em-ssh'
 
-module EM
+module EventMachine
   class Ssh
     # EM::Ssh::Shell encapsulates interaction with a user shell on an SSH server.
     # @example Retrieve the output of ifconfig -a on a server
@@ -222,4 +222,4 @@ module EM
       
     end # class::Shell
   end # class::Ssh
-end # module::EM
+end # module::EventMachine

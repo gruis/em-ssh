@@ -1,4 +1,4 @@
-module EM
+module EventMachine
   class Ssh
     class AuthenticationSession < Net::SSH::Authentication::Session
       include Log
@@ -35,4 +35,4 @@ module EM
       end # next_message
     end # class::AuthenticationSession
   end # module::Ssh
-end # module::EM
+end # module::EventMachine

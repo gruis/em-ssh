@@ -2,7 +2,7 @@ require File.expand_path("../lib/em-ssh/version", __FILE__)
 require "rubygems"
 ::Gem::Specification.new do |s|
   s.name                      = "em-ssh"
-  s.version                   = EM::Ssh::VERSION
+  s.version                   = EventMachine::Ssh::VERSION
   s.platform                  = ::Gem::Platform::RUBY
   s.authors                   = ['Caleb Crane']
   s.email                     = ['em-ssh@simulacre.org']
