@@ -1,40 +1,69 @@
 require 'em-ssh'
 
 module EM
-  class Ssh < EventMachine::Connection
+  class Ssh
+    # EM::Ssh::Shell encapsulates interaction with a user shell on an SSH server.
+    # @example Retrieve the output of ifconfig -a on a server
+    #   EM.run{
+    #     shell = EM::Ssh::Shell.new(host, user, password)
+    #     shell.wait_for('@icaleb ~]$')
+    #     interfaces = send_and_wait('/sbin/ifconfig -a', '@icaleb ~]$')
+    #
+    # Shells can be easily and quickly duplicated (#split) without the need to establish another connection.
+    # Shells provide :closed, :childless, and :split callbacks.
+    #
+    # @example Start another shell using the same connection
+    #   shell.on(:childless) do
+    #     info("#{shell}'s children all closed")
+    #     shell.disconnect
+    #     EM.stop
+    #   end
+    #
+    #   admin_shell = shell.split
+    #   admin_shell.on(:closed) { warn("admin shell has closed") }
+    #   admin_shell.send_and_wait('sudo su -', ']$')
     class Shell 
       include Log
       include Callbacks
       
       # Global timeout for wait operations; can be overriden by :timeout option to new
       TIMEOUT = 15
-      # [Net::SSH::Connection::Channel] The shell to which we can send_data
+      # @return [Net::SSH::Connection::Channel] The shell to which we can send_data
       attr_reader :shell
-      # [Net::SSH::Connection]
+      # @return [Net::SSH::Connection]
       attr_reader :connection
-      # Default (false) halt on timeout value - when true any exception will be propogated
+      # @return [Boolean] Default (false) halt on timeout value - when true any timeouts will be halt the shell by raising an exception
       attr_reader :halt_on_timeout
-      attr_writer :line_terminator
-      # [Hash]
+      # @return [Hash] the options passed to initialize
       attr_reader :options
+      # @return [Hash] the options to pass to connect automatically. They will be extracted from the opptions[:net_ssh] on initialization
       attr_reader :connect_opts
       
-      # [String] the host to login to
+      # @return [String] the host to login to
       attr_reader :host
-      # [String] The user to authenticate as
+      # @return [String] The user to authenticate as
       attr_reader :user
-      # [String] the password to authenticate with - can be nil
+      # @return [String] the password to authenticate with - can be nil
       attr_reader :pass
-      # [Array] all shells that have been split off from this one.
+      # @return [Array] all shells that have been split off from this one.
       attr_reader :children
-      # [Shell] the parent of this shell
+      # @return [Shell] the parent of this shell
       attr_reader :parent
-
-      # [String] 
+      # @return [String] a string (\r\n) to append to every command
       def line_terminator
         @line_terminator ||= "\r\n"
       end
+      # [String]
+      attr_writer :line_terminator
       
+      # Connect to an ssh server then start a user shell.
+      # @param [String] address
+      # @param [String] user
+      # @param [String, nil] pass by default publickey and password auth will be attempted
+      # @param [Hash] opts
+      # @option opts [Hash] :net_ssh options to pass to Net::SSH; see Net::SSH.start
+      # @option opts [Boolean] :halt_on_timeout (false)
+      # @option opts [Fixnum] :timeout (TIMEOUT) default timeout for all #wait_for and #send_wait calls.
       def initialize(address, user, pass, opts = {}, &blk)
         @halt_on_timeout = opts[:halt_on_timeout] || false
         @timeout         = opts[:timeout].is_a?(Fixnum) ? opts[:timeout] : TIMEOUT
@@ -47,13 +76,25 @@ module EM
         @parent          = opts[:parent]
         @children        = []
         
-        block_given? ? start(address, user, pass, opts = {}, &blk) : start(address, user, pass, opts = {})
-      end # initialize(address, user, pass)
+        block_given? ? open(&blk) : open
+      end
       
+      # Close the connection to the server and all child shells.
+      # Disconnected shells cannot be split.
+      def disconnect
+        close
+        connection.close
+      end
+      
+      # @return [Boolean] true if the connection is still alive
       def connected?
         connection && !connection.closed?
       end
       
+      # Close this shell and all children.
+      # Even when a shell is closed it is still connected to the server.
+      # Fires :closed event.
+      # @see Callbacks
       def close
         shell.close.tap{ debug("closing") } if shell.active?
         @closed = true
@@ -61,75 +102,90 @@ module EM
         fire(:closed)
       end
       
+      # @return [Boolean] Has this shell been closed.
       def closed?
         @closed == true
       end
       
-      # @param [String] d the data to send encoded as a string
-      # @return
-      def send_data(d)        
-        #debug("send_data: #{d}#{line_terminator}")
-        shell.send_data("#{d}#{line_terminator}")
-      end # send_data(d)
-      
-      
+      # Send a string to the server and wait for a response containing a specified String or Regex.
+      # @param [String] send_str
+      # @return [String] all data in the buffer including the wait_str if it was found
       def send_and_wait(send_str, wait_str = nil, opts = {})
+        raise ClosedChannel if closed?
         debug("send_and_wait(#{send_str.inspect}, #{wait_str.inspect}, #{opts})")
         send_data(send_str)
         return wait_for(wait_str, opts)
       end # send_and_wait(send_str, wait_str = nil, opts = {})
       
+      # Wait for the shell to send data containing the given string.
       # @param [String, Regexp] strregex a string or regex to match the console output against.
       # @param [Hash] opts
       # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
       # @option opts [Boolean] (false) :halt_on_timeout 
-      # @option opts [Decimal] :speed
       # @return [String] the contents of the buffer
       def wait_for(strregex, opts = { })
+        raise ClosedChannel if closed?
         debug("wait_for(#{strregex}, #{opts})")
         opts      = { :timeout => @timeout, :halt_on_timeout => @halt_on_timeout }.merge(opts)
-        @buffer ||=  ""
+        buffer    = ''
         found     = nil
         f         = Fiber.current
         
-        shell.on_data do |ch,data|
-          found = strregex.is_a?(Regexp) ? ((@buffer << data).match(strregex))  :  ((@buffer << data).include?(strregex))
-        end #  |ch,data|
-        
         timer   = nil
         timeout = proc do
-          @buffer = ""
           shell.on_data {|c,d| }
+          # @todo fire an em errback
           if opts[:halt_on_timeout]
-            raise Timeout::Error("timeout while waiting for #{strregex.inspect}; received: #{@buffer.inspect}").extend(Error)
+            raise TimeoutError("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
           else
-            warn("timeout while waiting for #{strregex.inspect}; received: #{@buffer.inspect}")
+            warn("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
           end # opts[:halt_on_timeout]
         end # timeout
         
-        waiter = proc do
-          if found
-            timer.cancel
-            result = @buffer.clone
-            @buffer = ""
+        shell.on_data do |ch,data|
+          buffer = "#{buffer}#{data}"
+          if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
+            timer.respond_to?(:cancel) && timer.cancel
+            result = buffer.clone
             shell.on_data {|c,d| }
             f.resume(result)
-          else
-            EM.next_tick(&waiter)
-          end # found
-        end # waiter
+          end
+        end #  |ch,data|
         
-        EM.next_tick(&waiter)
         timer = EM::Timer.new(opts[:timeout], &timeout)
         return Fiber.yield
       end # wait_for(strregex, opts = { })
       
+      # Open a shell on the server.
+      # You generally don't need to call this.
+      # @return [self]
+      def open
+        f = Fiber.current
+        connect unless connected?
+        
+        connection.open_channel do |channel|
+          debug "**** channel open: #{channel}"
+          channel.request_pty(options[:pty] || {}) do |pty,suc|
+            debug "***** pty open: #{pty}; suc: #{suc}"
+            pty.send_channel_request("shell") do |shell,success|
+              raise ConnectionError, "Failed to create shell." unless success
+              debug "***** shell open: #{shell}"
+              @shell = shell
+              f.resume(self)
+            end # |shell,success|
+          end # |pty,suc|
+        end # |channel|
+        
+        return Fiber.yield
+      end # start
       
-      # Create a new shell using the same ssh connection
+      # Create a new shell using the same ssh connection.
+      # A connection will be established if this shell is not connected. 
       # If a block is provided the child will be closed after yielding.
       # @yield [Shell] child
       # @return [Shell] child
       def split
+        connect unless connected?
         child = self.class.new(host, user, pass, {:connection => connection, :parent => self}.merge(options))
         child.line_terminator = line_terminator 
         children.push(child)
@@ -141,10 +197,9 @@ module EM
         block_given? ? yield(child).tap { child.close } : child
       end # split
       
-      
-    private
-      
-      # @return
+      # Connect to the server.
+      # Does not open the shell; use #open or #split
+      # You generally won't need to call this on your own.
       def connect
         f = Fiber.current
         ::EM::Ssh.start(host, user, connect_opts) do |connection|
@@ -155,43 +210,16 @@ module EM
       end # connect
       
       
-      def start(host, user, pass, opts = {})
-        f = Fiber.current
-
-        connect unless connected?
-
-        connection.open_channel do |channel|
-          debug "**** channel open: #{channel}"
-          channel.request_pty(opts[:pty] || {}) do |pty,suc|
-            debug "***** pty open: #{pty}; suc: #{suc}"
-            pty.send_channel_request("shell") do |shell,success|
-              raise ConnectionError, "Failed to create shell." unless success
-              debug "***** shell open: #{shell}"
-              @shell = shell
-              f.resume
-            end # |shell,success|
-          end # |pty,suc|
-        end # |channel|
-        
-        return Fiber.yield
-      end # start(address, user pass, opts = {})
+      # Send data to the ssh server shell.
+      # You generally don't need to call this.
+      # @see #send_and_wait
+      # @param [String] d the data to send encoded as a string
+      def send_data(d)
+        #debug("send_data: #{d.inspect}#{line_terminator}")
+        shell.send_data("#{d}#{line_terminator}")
+      end
       
       
-      def on_extended_data
-        shell.on_extended_data { |ch, type, data| yield(data) if block_given? }
-      end # on_extended_data(&block)
-
-      # The callback to execute when data is received. This callback
-      # will be overwritten by any calls to #wait_for
-      # @yield [String] data
-      # @return
-      def on_data(&block)
-        @last_on_data = block
-        shell && shell.on_data do |ch,data|
-          block_given? ? yield(data) : nil
-        end
-      end # on_data(ch, data)
-
     end # class::Shell
-  end # class::Ssh < EventMachine::Connection
+  end # class::Ssh
 end # module::EM

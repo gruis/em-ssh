@@ -1,5 +1,5 @@
 module EM
-  class Ssh < EventMachine::Connection
+  class Ssh
     class AuthenticationSession < Net::SSH::Authentication::Session
       include Log
       
@@ -30,7 +30,7 @@ module EM
             return packet
 
           else
-            raise Net::SSH::Exception, "unexpected message #{packet.type} (#{packet})"
+            raise SshError, "unexpected message #{packet.type} (#{packet})"
           end
       end # next_message
     end # class::AuthenticationSession

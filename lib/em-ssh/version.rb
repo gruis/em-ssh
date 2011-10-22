@@ -1,6 +1,5 @@
-require 'eventmachine'
 module EM
-  class Ssh < EventMachine::Connection
+  class Ssh
     VERSION='0.0.0'
-  end # class::Ssh < EventMachine::Connection
+  end # class::Ssh
 end # module::EM

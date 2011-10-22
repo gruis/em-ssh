@@ -19,6 +19,7 @@ require "rubygems"
   # s.extensions = "ext/extconf.rb"
   s.add_dependency 'eventmachine'
   s.add_dependency "net-ssh"
-  s.add_dependency 'ruby-termios'
-  s.add_dependency "highline"
+  # Not really necessary, but used in bin/em-ssh and bin/em-ssh-shell
+  s.add_development_dependency 'ruby-termios'
+  s.add_development_dependency "highline"
 end

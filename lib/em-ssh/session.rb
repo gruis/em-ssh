@@ -1,18 +1,18 @@
 
 module EM
-  class Ssh < EventMachine::Connection
+  class Ssh
     class Session < Net::SSH::Connection::Session
       include Log
       
       def initialize(transport, options = {})
         super(transport, options)
         register_callbacks
-      end # initialize(transport, options = {})
+      end
       
       # Override the default, blocking behavior of Net::SSH
       def loop(wait=nil, &block)
         return
-      end # loop(wait=nil, &block)
+      end
       
       # Override the default, blocking behavior of Net::SSH
       def process(wait=nil, &block)
@@ -21,27 +21,25 @@ module EM
 
       def send_message(msg)
         transport.send_message(msg)
-      end # send_message(msg)
-              
-      
+      end
+
+
     private
-      
-      
+
+
       def register_callbacks
-        transport.on(:session_packet) do |packet|
-          unless MAP.key?(packet.type)
-            raise Net::SSH::Exception, "unexpected response #{packet.type} (#{packet.inspect})"
-          end
+        transport.on(:packet) do |packet|
+          raise SshError, "unexpected response #{packet.type} (#{packet.inspect})" unless MAP.key?(packet.type)
           send(MAP[packet.type], packet)
         end #  |packet|
-        
+
         chann_proc = proc do
           channels.each { |id, channel| channel.process unless channel.closing? }
           EM.next_tick(&chann_proc)
-        end # 
+        end
         EM.next_tick(&chann_proc)
       end # register_callbacks
-              
+
     end # class::Session
-  end # class::Ssh < EventMachine::Connection
+  end # class::Ssh
 end # module::EM

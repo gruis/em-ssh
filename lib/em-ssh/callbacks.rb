@@ -1,6 +1,5 @@
 module EM
-  class Ssh < EventMachine::Connection
-  
+  class Ssh
     # A simple mixin enabling your objects to allow other objects to register callbacks and fire events.
     # @example
     #     class Connection
@@ -21,7 +20,7 @@ module EM
     #     end #  |data|
     module Callbacks
     
-      # The registered callbacks
+      # @return [Hash] The registered callbacks
       def callbacks
         @clbks ||= {}
       end # callbacks
@@ -60,41 +59,41 @@ module EM
           blk.call(*args)
         end # |*args|
       end # on_next(event, &blk)
-    
-    
+      
+      
       class Callback
         # The object that keeps this callback
         attr_reader :obj
-        # [Sybmol] the name of the event 
+        # [Sybmol] the name of the event
         attr_reader :event
         # The block to call when the event is fired
         attr_reader :block
-      
+        
         def initialize(obj, event, &blk)
           raise ArgumentError.new("a block is required") unless block_given?
           @obj   = obj
           @event = event
           @block = blk
         end # initialize(obj, event, &blk)
-      
+        
         # Call the callback with optional arguments
         def call(*args)
           block.call(*args)
         end # call(*args)
-      
+        
         # Registers the callback with the object. 
         # This is useful if you cancel the callback at one point and want to re-enable it later on.
         def register
           @obj.on(self)
         end # register
-      
+        
         def cancel
           raise "#{@obj} does not have any callbacks for #{@event.inspect}" unless @obj.respond_to?(:callbacks) && @obj.callbacks.respond_to?(:[]) && @obj.callbacks[@event].respond_to?(:delete)
           @obj.callbacks[@event].delete(self)
           self
         end # cancel
-      
       end # class::Callback
+      
     end # module::Callbacks
   end # class::Ssh
 end # module::EM

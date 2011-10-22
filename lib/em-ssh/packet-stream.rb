@@ -1,6 +1,6 @@
 
 module EM
-  class Ssh < EventMachine::Connection
+  class Ssh
     class PacketStream
       include Net::SSH::BufferedIo
       include Log
@@ -62,7 +62,7 @@ module EM
           @packet_length = @packet.read_long
         end
         need = @packet_length + 4 - server.block_size
-        raise Net::SSH::Exception, "padding error, need #{need} block #{server.block_size}" if need % server.block_size != 0
+        raise SshError, "padding error, need #{need} block #{server.block_size}" if need % server.block_size != 0
 
         return nil if available < need + server.hmac.mac_length
 
@@ -151,5 +151,5 @@ module EM
       end
       
     end # class::PacketStream
-  end # class::Ssh < EventMachine::Connection
+  end # class::Ssh
 end # module::EM
