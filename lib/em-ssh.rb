@@ -24,6 +24,7 @@ module EventMachine
     class ClosedChannel < SshError; end
     class DisconnectedChannel < SshError; end
     class ConnectionFailed < SshError; end
+    class ConnectionTimeout < ConnectionFailed; end
     
     
     class << self

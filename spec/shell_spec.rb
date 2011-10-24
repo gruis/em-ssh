@@ -46,5 +46,4 @@ describe "Ssh::Shell" do
       }.resume
     }  
   end # should yield a shell
-
 end # Ssh::Shell

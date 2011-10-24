@@ -10,9 +10,8 @@ module EventMachine
         # Allows other objects to register callbacks with events that occur on a Ssh instance
         include Callbacks
         
-        ##
-        # Transport related
-        
+        # maximum number of seconds to wait for a connection
+        TIMEOUT = 20
         # @return [String] The host to connect to, as given to the constructor.
         attr_reader :host
         
@@ -114,6 +113,7 @@ module EventMachine
         end
 
         def connection_completed
+          @contimeout.cancel
           @nocon.cancel
         end # connection_completed
 
@@ -124,10 +124,13 @@ module EventMachine
           @password       = options[:password]
           @queue          = []
           @options        = options
-
+          @timeout        = options[:timeout] || TIMEOUT
+          
           begin
             on(:connected, &options[:callback]) if options[:callback]
             @nocon          = on(:closed) { raise ConnectionFailed, @host }
+            @contimeout     = EM::Timer.new(@timeout) { raise ConnectionTimeout, @host }
+            
             @error_callback = lambda { |code| raise SshError.new(code) }
 
             @host_key_verifier = select_host_key_verifier(options[:paranoid])
