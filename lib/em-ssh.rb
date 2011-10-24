@@ -23,6 +23,7 @@ module EventMachine
     class TimeoutError < Timeout::Error; include Error; end
     class ClosedChannel < SshError; end
     class DisconnectedChannel < SshError; end
+    class ConnectionFailed < SshError; end
     
     
     class << self

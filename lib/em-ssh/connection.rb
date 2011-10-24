@@ -113,7 +113,9 @@ module EventMachine
           fire(:data, data)
         end
 
-
+        def connection_completed
+          @nocon.cancel
+        end # connection_completed
 
         def initialize(options = {})
           debug("#{self.class}.new(#{options})")
@@ -125,11 +127,12 @@ module EventMachine
 
           begin
             on(:connected, &options[:callback]) if options[:callback]
+            @nocon          = on(:closed) { raise ConnectionFailed, @host }
             @error_callback = lambda { |code| raise SshError.new(code) }
 
             @host_key_verifier = select_host_key_verifier(options[:paranoid])
             @server_version    = ServerVersion.new(self)
-            on(:version_negotiated) do 
+            on(:version_negotiated) do
               @data.consume!(@server_version.header.length)
               @algorithms = Net::SSH::Transport::Algorithms.new(self, options)
 
