@@ -103,6 +103,7 @@ module EventMachine
         # @return
         def unbind
           debug("#{self} is unbound")
+          fire(:closed)
           @closed = true
         end
 

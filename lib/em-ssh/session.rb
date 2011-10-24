@@ -1,4 +1,3 @@
-
 module EventMachine
   class Ssh
     class Session < Net::SSH::Connection::Session
@@ -39,11 +38,11 @@ module EventMachine
           send(MAP[packet.type], packet)
         end #  |packet|
 
-        chann_proc = proc do
+        chan_timer = EM.add_periodic_timer(0.01) do
+          # we need to check the channel for any data to send and tell it to process any input
+          # at some point we should override Channel#enqueue_pending_output, etc.,.
           channels.each { |id, channel| channel.process unless channel.closing? }
-          EM.next_tick(&chann_proc)
         end
-        EM.next_tick(&chann_proc)
       end # register_callbacks
 
     end # class::Session

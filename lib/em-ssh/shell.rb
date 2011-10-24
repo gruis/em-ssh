@@ -63,7 +63,8 @@ module EventMachine
       # @param [Hash] opts
       # @option opts [Hash] :net_ssh options to pass to Net::SSH; see Net::SSH.start
       # @option opts [Boolean] :halt_on_timeout (false)
-      # @option opts [Fixnum] :timeout (TIMEOUT) default timeout for all #wait_for and #send_wait calls.
+      # @option opts [Fixnum] :timeout (TIMEOUT) default timeout for all #wait_for and #send_wait calls
+      # @option opts [Boolean] :reconnect when disconnected reconnect
       def initialize(address, user, pass, opts = {}, &blk)
         @halt_on_timeout = opts[:halt_on_timeout] || false
         @timeout         = opts[:timeout].is_a?(Fixnum) ? opts[:timeout] : TIMEOUT
@@ -75,9 +76,15 @@ module EventMachine
         @connection      = opts[:connection]
         @parent          = opts[:parent]
         @children        = []
+        @reconnect    = opts[:reconnect]
         
         block_given? ? Fiber.new { open(&blk) }.resume : open
       end
+      
+      # @return [Boolean] true if the connection should be automatically re-established; default: false
+      def reconnect?
+        @reconnect == true
+      end # auto_connect?
       
       # Close the connection to the server and all child shells.
       # Disconnected shells cannot be split.
@@ -111,6 +118,7 @@ module EventMachine
       # @param [String] send_str
       # @return [String] all data in the buffer including the wait_str if it was found
       def send_and_wait(send_str, wait_str = nil, opts = {})
+        reconnect? ? connect : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("send_and_wait(#{send_str.inspect}, #{wait_str.inspect}, #{opts})")
         send_data(send_str)
@@ -124,6 +132,7 @@ module EventMachine
       # @option opts [Boolean] (false) :halt_on_timeout 
       # @return [String] the contents of the buffer
       def wait_for(strregex, opts = { })
+        reconnect? ? connect : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
         opts      = { :timeout => @timeout, :halt_on_timeout => @halt_on_timeout }.merge(opts)

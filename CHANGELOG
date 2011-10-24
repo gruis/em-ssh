@@ -1,0 +1,3 @@
+0.0.3
+ - Removes CPU pegging via recursive EM.next_tick
+ - Adds an auto reconnect option to shell
