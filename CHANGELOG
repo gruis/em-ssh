@@ -1,3 +1,7 @@
+0.1.0
+ - Connection#initialize will fire :error Net::SSH::AuthenticationError when authentication fails rather than raising an error
+ - Shell#open will catch :error fired by Connection#initialize and raise it as a ConnectionError
+
 0.0.3
  - Removes CPU pegging via recursive EM.next_tick
  - Adds an auto reconnect option to shell

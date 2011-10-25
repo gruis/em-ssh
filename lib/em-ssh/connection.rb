@@ -148,8 +148,8 @@ module EventMachine
                   if auth.authenticate("ssh-connection", user, options[:password])
                     fire(:connected, Session.new(self, options))
                   else
+                    fire(:error, Net::SSH::AuthenticationFailed.new(user))
                     close_connection
-                    raise Net::SSH::AuthenticationFailed, user
                   end # auth.authenticate("ssh-connection", user, options[:password])
                 end.resume # Fiber
               end # :algo_init

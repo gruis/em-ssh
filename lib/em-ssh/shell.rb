@@ -169,8 +169,20 @@ module EventMachine
       # @return [self]
       def open(&blk)
         debug("open(#{blk})")
-        f = Fiber.current
-        connect unless connected?
+        f      = Fiber.current
+
+        conerr = nil
+        unless connected?
+          conerr = on(:error) do |e|
+            error("#{e} (#{e.class})")
+            debug(e.backtrace)
+            conerr = e
+            f.resume(e)
+          end #  |e|
+          connect
+        end # connected?
+        
+        connection || raise(ConnectionError, "failed to create shell for #{host}: #{conerr} (#{conerr.class})")
         
         connection.open_channel do |channel|
           debug "**** channel open: #{channel}"
@@ -178,6 +190,7 @@ module EventMachine
             debug "***** pty open: #{pty}; suc: #{suc}"
             pty.send_channel_request("shell") do |shell,success|
               raise ConnectionError, "Failed to create shell." unless success
+              conerr && conerr.cancel
               debug "***** shell open: #{shell}"
               @shell = shell
               Fiber.new { yield(self) if block_given? }.resume
@@ -213,10 +226,11 @@ module EventMachine
       def connect
         return if connected?
         f = Fiber.current
-        ::EM::Ssh.start(host, user, connect_opts) do |connection|
+        con = ::EM::Ssh.start(host, user, connect_opts) do |connection|
           @connection = connection
           f.resume
         end # |connection|
+        con.on(:error) { |e| fire(:error, e) }
         return Fiber.yield
       end # connect
       
