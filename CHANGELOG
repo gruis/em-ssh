@@ -1,6 +1,8 @@
 0.1.0
  - Connection#initialize will fire :error Net::SSH::AuthenticationError when authentication fails rather than raising an error
  - Shell#open will catch :error fired by Connection#initialize and raise it as a ConnectionError
+ - Shell no longer accepts :halt_on_timeout
+ - Shell#wait_for will fire :error if timeout is reached
 
 0.0.3
  - Removes CPU pegging via recursive EM.next_tick

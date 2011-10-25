@@ -32,8 +32,6 @@ module EventMachine
       attr_reader :shell
       # @return [Net::SSH::Connection]
       attr_reader :connection
-      # @return [Boolean] Default (false) halt on timeout value - when true any timeouts will be halt the shell by raising an exception
-      attr_reader :halt_on_timeout
       # @return [Hash] the options passed to initialize
       attr_reader :options
       # @return [Hash] the options to pass to connect automatically. They will be extracted from the opptions[:net_ssh] on initialization
@@ -62,11 +60,9 @@ module EventMachine
       # @param [String, nil] pass by default publickey and password auth will be attempted
       # @param [Hash] opts
       # @option opts [Hash] :net_ssh options to pass to Net::SSH; see Net::SSH.start
-      # @option opts [Boolean] :halt_on_timeout (false)
       # @option opts [Fixnum] :timeout (TIMEOUT) default timeout for all #wait_for and #send_wait calls
       # @option opts [Boolean] :reconnect when disconnected reconnect
       def initialize(address, user, pass, opts = {}, &blk)
-        @halt_on_timeout = opts[:halt_on_timeout] || false
         @timeout         = opts[:timeout].is_a?(Fixnum) ? opts[:timeout] : TIMEOUT
         @host            = address
         @user            = user
@@ -129,13 +125,12 @@ module EventMachine
       # @param [String, Regexp] strregex a string or regex to match the console output against.
       # @param [Hash] opts
       # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
-      # @option opts [Boolean] (false) :halt_on_timeout 
       # @return [String] the contents of the buffer
       def wait_for(strregex, opts = { })
         reconnect? ? connect : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
-        opts      = { :timeout => @timeout, :halt_on_timeout => @halt_on_timeout }.merge(opts)
+        opts      = { :timeout => @timeout }.merge(opts)
         buffer    = ''
         found     = nil
         f         = Fiber.current
@@ -143,12 +138,15 @@ module EventMachine
         timer   = nil
         timeout = proc do
           shell.on_data {|c,d| }
-          # @todo fire an em errback
-          if opts[:halt_on_timeout]
-            raise TimeoutError.new("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
-          else
-            warn("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
-          end # opts[:halt_on_timeout]
+          begin
+            TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
+          rescue TimeoutError => e
+            error(e)
+            debug(e.backtrace)
+            fire(:error, e)
+          end # begin
+          f.resume(nil)
+          shell.on_data {|c,d| }
         end # timeout
         
         shell.on_data do |ch,data|
