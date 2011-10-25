@@ -3,6 +3,7 @@
  - Shell#open will catch :error fired by Connection#initialize and raise it as a ConnectionError
  - Shell no longer accepts :halt_on_timeout
  - Shell#wait_for will fire :error if timeout is reached
+ - Key exchange exceptions will be caught and propagated through fire :error
 
 0.0.3
  - Removes CPU pegging via recursive EM.next_tick

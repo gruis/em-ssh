@@ -242,8 +242,12 @@ module EventMachine
                 log.send((packet[:always_display] ? :fatal : :debug), packet[:message])
               when KEXINIT
                 Fiber.new do
-                   algorithms.accept_kexinit(packet)
-                   fire(:algo_init) if algorithms.initialized?
+                  begin
+                    algorithms.accept_kexinit(packet)
+                    fire(:algo_init) if algorithms.initialized?
+                  rescue Exception => e
+                    fire(:error, e)
+                  end # begin
                 end.resume
               else
                 @queue.push(packet)
