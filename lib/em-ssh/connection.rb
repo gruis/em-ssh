@@ -233,7 +233,7 @@ module EventMachine
             while (packet = @socket.poll_next_packet) 
               case packet.type
               when DISCONNECT
-                raise Net::SSH::Disconnect, "disconnected: #{packet[:description]} (#{packet[:reason_code]})"
+                close_connection
               when IGNORE
                 debug("IGNORE packet received: #{packet[:data].inspect}")
               when UNIMPLEMENTED
