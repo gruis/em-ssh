@@ -22,7 +22,7 @@ module EventMachine
     class SshError < Net::SSH::Exception; include Error; end
     class TimeoutError < Timeout::Error; include Error; end
     class ClosedChannel < SshError; end
-    class DisconnectedChannel < SshError; end
+    class Disconnected < SshError; end
     class ConnectionFailed < SshError; end
     class ConnectionTimeout < ConnectionFailed; end
     

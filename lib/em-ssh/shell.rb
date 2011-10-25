@@ -76,7 +76,7 @@ module EventMachine
         @connection      = opts[:connection]
         @parent          = opts[:parent]
         @children        = []
-        @reconnect    = opts[:reconnect]
+        @reconnect       = opts[:reconnect]
         
         block_given? ? Fiber.new { open(&blk) }.resume : open
       end
@@ -118,7 +118,7 @@ module EventMachine
       # @param [String] send_str
       # @return [String] all data in the buffer including the wait_str if it was found
       def send_and_wait(send_str, wait_str = nil, opts = {})
-        reconnect? ? connect : raise(Disconnected) unless connected?
+        reconnect? ? connect : raise(Disconnected) if !connected?
         raise ClosedChannel if closed?
         debug("send_and_wait(#{send_str.inspect}, #{wait_str.inspect}, #{opts})")
         send_data(send_str)
@@ -145,7 +145,7 @@ module EventMachine
           shell.on_data {|c,d| }
           # @todo fire an em errback
           if opts[:halt_on_timeout]
-            raise TimeoutError("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
+            raise TimeoutError.new("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
           else
             warn("timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
           end # opts[:halt_on_timeout]
