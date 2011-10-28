@@ -96,7 +96,6 @@ See bin/em-ssh-shell for a more complex example usage of Shell.
 Em-ssh relies on Fibers. MRI 1.9.2-p290 on OSX Lion has been known to segfault when using Fibers.
 
 
-
 ##Copyright
 Copyright (c) 2011 Caleb Crane
 

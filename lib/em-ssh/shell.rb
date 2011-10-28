@@ -137,10 +137,11 @@ module EventMachine
         
         timer   = nil
         timeout = proc do
+          debug("timeout #{timer} fired")
           shell.on_data {|c,d| }
           begin
-            TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
-          rescue TimeoutError => e
+            raise TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
+          rescue Exception => e
             error(e)
             debug(e.backtrace)
             fire(:error, e)
@@ -151,7 +152,10 @@ module EventMachine
         
         shell.on_data do |ch,data|
           buffer = "#{buffer}#{data}"
+          debug("data: #{buffer.dump}")
           if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
+            debug("data matched")
+            debug("canceling timer #{timer}")
             timer.respond_to?(:cancel) && timer.cancel
             shell.on_data {|c,d| }
             f.resume(buffer)
@@ -159,6 +163,7 @@ module EventMachine
         end #  |ch,data|
         
         timer = EM::Timer.new(opts[:timeout], &timeout)
+        debug("set timer: #{timer} for #{opts[:timeout]}")
         return Fiber.yield
       end # wait_for(strregex, opts = { })
       
@@ -242,6 +247,26 @@ module EventMachine
         shell.send_data("#{d}#{line_terminator}")
       end
       
+      
+      def debug(msg = nil, &blk)
+        super("#{host} #{msg}", &blk)
+      end
+      
+      def info(msg = nil, &blk)
+        super("#{host} #{msg}", &blk)
+      end
+      
+      def fatal(msg = nil, &blk)
+        super("#{host} #{msg}", &blk)
+      end
+      
+      def warn(msg = nil, &blk)
+        super("#{host} #{msg}", &blk)
+      end
+      
+      def error(msg = nil, &blk)
+        super("#{host} #{msg}", &blk)
+      end
       
     end # class::Shell
   end # class::Ssh
