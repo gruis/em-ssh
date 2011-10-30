@@ -47,7 +47,7 @@ abort("command is required") if commands.empty?
 
 
 EM.run do
-  EM::Ssh::Shell.new(host, options[:user], options[:password]) do |shell|
+  EM::Ssh::Shell.new(host, options[:user], options[:password], :net_ssh => options) do |shell|
     commands.each do |command|
       mys = shell.split
       mys.on(:closed) { info("#{mys} has closed") }

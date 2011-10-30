@@ -229,8 +229,7 @@ module EventMachine
         # @return [Callback] the callback that was registered
         def register_data_handler
           on(:data) do |data|
-            # @todo instead of while use a EM.next_tick
-            while (packet = @socket.poll_next_packet) 
+            while (packet = @socket.poll_next_packet)
               case packet.type
               when DISCONNECT
                 close_connection
