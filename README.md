@@ -53,7 +53,7 @@ See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/
 
 ##Shell
  
-Em-ssh provides an exepct-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
+Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
 
 ### Example
 	require 'em-ssh/shell'
