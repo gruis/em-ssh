@@ -22,10 +22,10 @@ module EventMachine
     #   admin_shell = shell.split
     #   admin_shell.on(:closed) { warn("admin shell has closed") }
     #   admin_shell.send_and_wait('sudo su -', ']$')
-    class Shell 
+    class Shell
       include Log
       include Callbacks
-      
+
       # Global timeout for wait operations; can be overriden by :timeout option to new
       TIMEOUT = 15
       # @return [Net::SSH::Connection::Channel] The shell to which we can send_data
@@ -36,7 +36,7 @@ module EventMachine
       attr_reader :options
       # @return [Hash] the options to pass to connect automatically. They will be extracted from the opptions[:net_ssh] on initialization
       attr_reader :connect_opts
-      
+
       # @return [String] the host to login to
       attr_reader :host
       # @return [String] The user to authenticate as
@@ -53,7 +53,7 @@ module EventMachine
       end
       # [String]
       attr_writer :line_terminator
-      
+
       # Connect to an ssh server then start a user shell.
       # @param [String] address
       # @param [String] user
@@ -73,27 +73,27 @@ module EventMachine
         @parent          = opts[:parent]
         @children        = []
         @reconnect       = opts[:reconnect]
-        
+
         block_given? ? Fiber.new { open(&blk) }.resume : open
       end
-      
+
       # @return [Boolean] true if the connection should be automatically re-established; default: false
       def reconnect?
         @reconnect == true
       end # auto_connect?
-      
+
       # Close the connection to the server and all child shells.
       # Disconnected shells cannot be split.
       def disconnect
         close
         connection.close
       end
-      
+
       # @return [Boolean] true if the connection is still alive
       def connected?
         connection && !connection.closed?
       end
-      
+
       # Close this shell and all children.
       # Even when a shell is closed it is still connected to the server.
       # Fires :closed event.
@@ -104,12 +104,12 @@ module EventMachine
         children.each { |c| c.close }
         fire(:closed)
       end
-      
+
       # @return [Boolean] Has this shell been closed.
       def closed?
         @closed == true
       end
-      
+
       # Send a string to the server and wait for a response containing a specified String or Regex.
       # @param [String] send_str
       # @return [String] all data in the buffer including the wait_str if it was found
@@ -120,7 +120,7 @@ module EventMachine
         send_data(send_str)
         return wait_for(wait_str, opts)
       end # send_and_wait(send_str, wait_str = nil, opts = {})
-      
+
       # Wait for the shell to send data containing the given string.
       # @param [String, Regexp] strregex a string or regex to match the console output against.
       # @param [Hash] opts
@@ -134,7 +134,7 @@ module EventMachine
         buffer    = ''
         found     = nil
         f         = Fiber.current
-        
+
         timer   = nil
         timeout = proc do
           debug("timeout #{timer} fired")
@@ -149,7 +149,7 @@ module EventMachine
           f.resume(nil)
           shell.on_data {|c,d| }
         end # timeout
-        
+
         shell.on_data do |ch,data|
           buffer = "#{buffer}#{data}"
           debug("data: #{buffer.dump}")
@@ -161,12 +161,12 @@ module EventMachine
             f.resume(buffer)
           end
         end #  |ch,data|
-        
+
         timer = EM::Timer.new(opts[:timeout], &timeout)
         debug("set timer: #{timer} for #{opts[:timeout]}")
         return Fiber.yield
       end # wait_for(strregex, opts = { })
-      
+
       # Open a shell on the server.
       # You generally don't need to call this.
       # @return [self]
@@ -184,9 +184,9 @@ module EventMachine
           end #  |e|
           connect
         end # connected?
-        
+
         connection || raise(ConnectionError, "failed to create shell for #{host}: #{conerr} (#{conerr.class})")
-        
+
         connection.open_channel do |channel|
           debug "**** channel open: #{channel}"
           channel.request_pty(options[:pty] || {}) do |pty,suc|
@@ -201,28 +201,28 @@ module EventMachine
             end # |shell,success|
           end # |pty,suc|
         end # |channel|
-        
+
         return Fiber.yield
       end # start
-      
+
       # Create a new shell using the same ssh connection.
-      # A connection will be established if this shell is not connected. 
+      # A connection will be established if this shell is not connected.
       # If a block is provided the child will be closed after yielding.
       # @yield [Shell] child
       # @return [Shell] child
       def split
         connect unless connected?
         child = self.class.new(host, user, pass, {:connection => connection, :parent => self}.merge(options))
-        child.line_terminator = line_terminator 
+        child.line_terminator = line_terminator
         children.push(child)
         child.on(:closed) do
-          children.delete(child) 
+          children.delete(child)
           fire(:childless).tap{ info("fired :childless") } if children.empty?
         end
         fire(:split, child)
         block_given? ? yield(child).tap { child.close } : child
       end # split
-      
+
       # Connect to the server.
       # Does not open the shell; use #open or #split
       # You generally won't need to call this on your own.
@@ -236,8 +236,8 @@ module EventMachine
         con.on(:error) { |e| fire(:error, e) }
         return Fiber.yield
       end # connect
-      
-      
+
+
       # Send data to the ssh server shell.
       # You generally don't need to call this.
       # @see #send_and_wait
@@ -246,28 +246,27 @@ module EventMachine
         #debug("send_data: #{d.dump}#{line_terminator.dump}")
         shell.send_data("#{d}#{line_terminator}")
       end
-      
-      
+
+
       def debug(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
-      
+
       def info(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
-      
+
       def fatal(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
-      
+
       def warn(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
-      
+
       def error(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
-      
     end # class::Shell
   end # class::Ssh
 end # module::EventMachine

@@ -2,23 +2,23 @@ module EventMachine
   class Ssh
     class Session < Net::SSH::Connection::Session
       include Log
-      
+
       def initialize(transport, options = {})
         super(transport, options)
         register_callbacks
       end
-      
+
       # Override the default, blocking behavior of Net::SSH.
       # Callers to loop will still wait, but not block the loop.
       def loop(wait=nil, &block)
         f = Fiber.current
-        l = proc do 
+        l = proc do
           block.call ? EM.next_tick(&l) : f.resume
         end
         EM.next_tick(&l)
         return Fiber.yield
       end
-      
+
       # Override the default, blocking behavior of Net::SSH
       def process(wait=nil, &block)
         return true
@@ -44,7 +44,6 @@ module EventMachine
           channels.each { |id, channel| channel.process unless channel.closing? }
         end
       end # register_callbacks
-
     end # class::Session
   end # class::Ssh
 end # module::EventMachine

@@ -6,21 +6,21 @@ module EventMachine
     # Most of the methods here are only for compatibility with Net::SSH
     class Connection < EventMachine::Connection
         include Log
-        
+
         # Allows other objects to register callbacks with events that occur on a Ssh instance
         include Callbacks
-        
+
         # maximum number of seconds to wait for a connection
         TIMEOUT = 20
         # @return [String] The host to connect to, as given to the constructor.
         attr_reader :host
-        
+
         # @return [Fixnum] the port number (DEFAULT_PORT) to connect to, as given in the options to the constructor.
         attr_reader :port
-        
+
         # @return [ServerVersion] The ServerVersion instance that encapsulates the negotiated protocol version.
         attr_reader :server_version
-        
+
         # The Algorithms instance used to perform key exchanges.
         attr_reader :algorithms
 
@@ -29,21 +29,21 @@ module EventMachine
 
         # The hash of options that were given to the object at initialization.
         attr_reader :options
-        
+
         # @return [PacketStream] emulates a socket and ssh packetstream
         attr_reader :socket
-        
+
         # @return [Boolean] true if the connection has been closed
         def closed?
           @closed == true
         end
-        
+
         # Close the connection
         def close
           # #unbind will update @closed
           close_connection
         end
-        
+
         # Send a packet to the server
         def send_message(message)
           @socket.send_packet(message)
@@ -56,7 +56,7 @@ module EventMachine
           cb = on(:packet) do |packet|
             if @queue.any? && algorithms.allow?(@queue.first)
               cb.cancel
-              f.resume(@queue.shift) 
+              f.resume(@queue.shift)
             end
           end # :packet
           return Fiber.yield
@@ -80,7 +80,7 @@ module EventMachine
             return Fiber.yield
           end
         end
-        
+
         # Returns immediately if a rekey is already in process. Otherwise, if a
         # rekey is needed (as indicated by the socket, see PacketStream#if_needs_rekey?)
         # one is performed, causing this method to block until it completes.
@@ -125,12 +125,12 @@ module EventMachine
           @queue          = []
           @options        = options
           @timeout        = options[:timeout] || TIMEOUT
-          
+
           begin
             on(:connected, &options[:callback]) if options[:callback]
             @nocon          = on(:closed) { raise ConnectionFailed, @host }
             @contimeout     = EM::Timer.new(@timeout) { raise ConnectionTimeout, @host }
-            
+
             @error_callback = lambda { |code| raise SshError.new(code) }
 
             @host_key_verifier = select_host_key_verifier(options[:paranoid])
@@ -220,9 +220,6 @@ module EventMachine
           end
         end
 
-
-
-
       private
 
         # Register the primary :data callback
@@ -255,8 +252,8 @@ module EventMachine
                   fire(:session_packet, packet) if packet.type >= GLOBAL_REQUEST
                 end # algorithms.allow?(packet)
                 socket.consume!
-              end # packet.type          
-            end # (packet = @socket.poll_next_packet) 
+              end # packet.type
+            end # (packet = @socket.poll_next_packet)
           end #  |data|
         end # register_data_handler
 
@@ -279,9 +276,6 @@ module EventMachine
             paranoid.respond_to?(:verify) ? paranoid : (raise ArgumentError.new("argument to :paranoid is not valid: #{paranoid.inspect}"))
           end # paranoid
         end # select_host_key_verifier(paranoid)
-        
     end # class::Connection < EventMachine::Connection
   end # module::Ssh
 end # module::EventMachine
-
-

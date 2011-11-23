@@ -2,12 +2,12 @@ module EventMachine
   class Ssh
     class AuthenticationSession < Net::SSH::Authentication::Session
       include Log
-      
+
       def authenticate(*args)
         debug { "authenticate(#{args.join(", ")})" }
         super(*args)
       end # authenticate(*args)
-      
+
       # Returns once an acceptable auth packet is received.
       def next_message
           packet = transport.next_message

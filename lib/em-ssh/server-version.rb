@@ -2,18 +2,18 @@ module EventMachine
   class Ssh
     class ServerVersion
       include Log
-      
+
       attr_reader :header
       attr_reader :version
-      
+
       def initialize(connection)
         debug("#{self}.new(#{connection})")
         negotiate!(connection)
       end
-      
-      
+
+
     private
-      
+
       def negotiate!(connection)
         @version = ''
         cb = connection.on(:data) do |data|
@@ -31,7 +31,6 @@ module EventMachine
           end # @header[-1] == "\n"
         end #  |data|
       end
-
     end # class::ServerVersion
   end # module::Ssh
 end # module::EventMachine

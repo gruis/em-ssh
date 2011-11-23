@@ -3,8 +3,8 @@ module EventMachine
     class PacketStream
       include Net::SSH::BufferedIo
       include Log
-      
-      
+
+
       # The map of "hints" that can be used to modify the behavior of the packet
       # stream. For instance, when authentication succeeds, an "authenticated"
       # hint is set, which is used to determine whether or not to compress the
@@ -18,12 +18,12 @@ module EventMachine
       # The client state object, which encapsulates the algorithms used to build
       # packets to send to the server.
       attr_reader :client
-      
+
       # The input stream
       attr_reader :input
       # The output stream
       attr_reader :output
-      
+
       def initialize(connection)
         @connection = connection
         @input      = Net::SSH::Buffer.new
@@ -33,7 +33,7 @@ module EventMachine
         @client     = Net::SSH::Transport::State.new(self, :client)
         @packet     = nil
       end # initialize(content="")
-      
+
       # Consumes n bytes from the buffer, where n is the current position
       # unless otherwise specified. This is useful for removing data from the
       # buffer that has previously been read, when you are expecting more data
@@ -44,7 +44,7 @@ module EventMachine
       def consume!(*args)
         input.consume!(*args)
       end # consume!(*args)
-      
+
       # Tries to read the next packet. If there is insufficient data to read
       # an entire packet, this returns immediately, otherwise the packet is
       # read, post-processed according to the cipher, hmac, and compression
@@ -94,7 +94,7 @@ module EventMachine
 
         return Net::SSH::Packet.new(payload)
       end # poll_next_packet
-      
+
       # Copyright (c) 2008 Jamis Buck
       def send_packet(payload)
         # try to compress the packet
@@ -129,7 +129,7 @@ module EventMachine
 
         self
       end # send_packet(payload)
-      
+
       # Performs any pending cleanup necessary on the IO and its associated
       # state objects. (See State#cleanup).
       def cleanup
@@ -148,7 +148,6 @@ module EventMachine
           server.reset! if server.needs_rekey?
         end
       end
-      
     end # class::PacketStream
   end # class::Ssh
 end # module::EventMachine
