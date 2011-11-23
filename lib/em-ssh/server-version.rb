@@ -12,7 +12,7 @@ module EventMachine
       end
 
 
-    private
+      private
 
       def negotiate!(connection)
         @version = ''
