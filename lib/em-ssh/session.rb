@@ -29,7 +29,7 @@ module EventMachine
       end
 
 
-      private
+    private
 
 
       def register_callbacks
