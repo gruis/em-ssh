@@ -15,7 +15,7 @@ module EventMachine
   #  end
   class Ssh
     DEFAULT_PORT = 22
-    
+
     # Generic error tag
     module Error; end
     # Any class that inherits from SshError will be an Exception and include a Ssh::Error tag
@@ -25,8 +25,8 @@ module EventMachine
     class Disconnected < SshError; end
     class ConnectionFailed < SshError; end
     class ConnectionTimeout < ConnectionFailed; end
-    
-    
+
+
     class << self
       attr_writer :logger
       # Creates a logger when necessary
@@ -34,7 +34,7 @@ module EventMachine
       def logger(level = Logger::WARN)
         @logger ||= ::Logger.new(STDERR).tap{ |l| l.level = level }
       end
-      
+
       # Connect to an ssh server
       # @param [String] host
       # @param [String] user
@@ -42,7 +42,7 @@ module EventMachine
       # @yield [Session]  an EventMachine compatible Net::SSH::Session
       # @see http://net-ssh.github.com/ssh/v2/api/index.html
       # @return [Session]
-      # @example 
+      # @example
       #   EM::Ssh.start(host, user, options) do |connection|
       #    log.debug "**** connected: #{connection}"
       #    connection.open_channel do |channel|
@@ -55,7 +55,7 @@ module EventMachine
       end
       alias :start :connect
     end # << self
-    
+
     # Pull in the constants from Net::SSH::[Transport, Connection and Authentication]
     # and define them locally.
     [:Transport, :Connection, :Authentication]
@@ -65,9 +65,11 @@ module EventMachine
         const_set(name, mod.const_get(name))
       end #  |name|
     end #  |module|
-    
+
   end # class::Ssh
 end # module::EventMachine
+
+EM::P::Ssh = EventMachine::Ssh
 
 
 require 'em-ssh/callbacks'
