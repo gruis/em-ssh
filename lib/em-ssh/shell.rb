@@ -74,7 +74,11 @@ module EventMachine
         @children        = []
         @reconnect       = opts[:reconnect]
 
-        block_given? ? Fiber.new { open(&blk) }.resume : open
+        if block_given?
+          Fiber.new { open(&blk).tap{|r| raise r if r.is_a?(Exception) } }.resume
+        else
+          open.tap{|r| raise r if r.is_a?(Exception) }
+        end # block_given?
       end
 
       # @return [Boolean] true if the connection should be automatically re-established; default: false
@@ -125,59 +129,31 @@ module EventMachine
       # @param [String, Regexp] strregex a string or regex to match the console output against.
       # @param [Hash] opts
       # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
-      # @return [String] the contents of the buffer
+      # @return [String] the contents of the buffer or a TimeoutError
+      # @raise Disconnected
+      # @raise ClosedChannel
+      # @raise TimeoutError
       def wait_for(strregex, opts = { })
         reconnect? ? connect : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
-        opts      = { :timeout => @timeout }.merge(opts)
-        buffer    = ''
-        found     = nil
-        f         = Fiber.current
+        fiber_wait_for(strregex, opts).tap {|r| raise r if r.is_a?(Exception) }
+      end
 
-        timer   = nil
-        timeout = proc do
-          debug("timeout #{timer} fired")
-          shell.on_data {|c,d| }
-          begin
-            raise TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
-          rescue Exception => e
-            error(e)
-            debug(e.backtrace)
-            fire(:error, e)
-          end # begin
-          f.resume(nil)
-          shell.on_data {|c,d| }
-        end # timeout
-
-        shell.on_data do |ch,data|
-          buffer = "#{buffer}#{data}"
-          debug("data: #{buffer.dump}")
-          if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
-            debug("data matched")
-            debug("canceling timer #{timer}")
-            timer.respond_to?(:cancel) && timer.cancel
-            shell.on_data {|c,d| }
-            f.resume(buffer)
-          end
-        end #  |ch,data|
-
-        timer = EM::Timer.new(opts[:timeout], &timeout)
-        debug("set timer: #{timer} for #{opts[:timeout]}")
-        return Fiber.yield
-      end # wait_for(strregex, opts = { })
 
       # Open a shell on the server.
       # You generally don't need to call this.
-      # @return [self]
+      # @return [self, Exception]
       def open(&blk)
         debug("open(#{blk})")
         f      = Fiber.current
+        trace  = caller
 
         conerr = nil
         unless connected?
           conerr = on(:error) do |e|
             error("#{e} (#{e.class})")
+            e.set_backtrace(trace + Array(e.backtrace))
             debug(e.backtrace)
             conerr = e
             f.resume(e)
@@ -192,7 +168,9 @@ module EventMachine
           channel.request_pty(options[:pty] || {}) do |pty,suc|
             debug "***** pty open: #{pty}; suc: #{suc}"
             pty.send_channel_request("shell") do |shell,success|
-              raise ConnectionError, "Failed to create shell." unless success
+              unless success
+                f.resume(ConnectionError.new("Failed to create shell").tap{|e| e.set_backtrace(caller) })
+              end
               conerr && conerr.cancel
               debug "***** shell open: #{shell}"
               @shell = shell
@@ -228,12 +206,14 @@ module EventMachine
       # You generally won't need to call this on your own.
       def connect
         return if connected?
+        trace = caller
         f = Fiber.current
-        con = ::EM::Ssh.start(host, user, connect_opts) do |connection|
-          @connection = connection
-          f.resume
-        end # |connection|
-        con.on(:error) { |e| fire(:error, e) }
+        con = ::EM::Ssh.start(host, user, connect_opts) { |connection| f.resume(@connection = connection) }
+        con.on(:error) do |e|
+          e.set_backtrace(trace + Array(e.backtrace))
+          fire(:error, e)
+          f.resume(e)
+        end
         return Fiber.yield
       end # connect
 
@@ -243,7 +223,6 @@ module EventMachine
       # @see #send_and_wait
       # @param [String] d the data to send encoded as a string
       def send_data(d)
-        #debug("send_data: #{d.dump}#{line_terminator.dump}")
         shell.send_data("#{d}#{line_terminator}")
       end
 
@@ -267,6 +246,52 @@ module EventMachine
       def error(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
+
+
+    private
+    # TODO move private stuff down to private
+    #      e.g., #open, #connect,
+
+      # Wait for the shell to send data containing the given string.
+      # @param [String, Regexp] strregex a string or regex to match the console output against.
+      # @param [Hash] opts
+      # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
+      # @return [String, Exception] the contents of the buffer or a TimeoutError
+      def fiber_wait_for(strregex, opts = { })
+        opts      = { :timeout => @timeout }.merge(opts)
+        buffer    = ''
+        found     = nil
+        f         = Fiber.current
+        trace     = caller
+
+        timer   = nil
+        timeout = proc do
+          debug("timeout #{timer} fired")
+          shell.on_data {|c,d| }
+          e = TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
+          e.set_backtrace(trace)
+          error(e)
+          debug(e.backtrace)
+          f.resume(e)
+        end # timeout
+
+        shell.on_data do |ch,data|
+          buffer = "#{buffer}#{data}"
+          debug("data: #{buffer.dump}")
+          if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
+            debug("data matched")
+            debug("canceling timer #{timer}")
+            timer.respond_to?(:cancel) && timer.cancel
+            shell.on_data {|c,d| }
+            f.resume(buffer)
+          end
+        end #  |ch,data|
+
+        timer = EM::Timer.new(opts[:timeout], &timeout)
+        debug("set timer: #{timer} for #{opts[:timeout]}")
+        return Fiber.yield
+      end # wait_for(strregex, opts = { })
+
     end # class::Shell
   end # class::Ssh
 end # module::EventMachine

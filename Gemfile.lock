@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    em-ssh (0.1.1)
+    em-ssh (0.2.0)
       eventmachine
       net-ssh
 
@@ -12,7 +12,7 @@ GEM
     diff-lcs (1.1.3)
     eventmachine (0.12.10)
     highline (1.6.2)
-    net-ssh (2.2.1)
+    net-ssh (2.3.0)
     rspec (2.6.0)
       rspec-core (~> 2.6.0)
       rspec-expectations (~> 2.6.0)
