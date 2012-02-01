@@ -137,7 +137,34 @@ module EventMachine
         reconnect? ? connect : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
-        fiber_wait_for(strregex, opts).tap {|r| raise r if r.is_a?(Exception) }
+        opts      = { :timeout => @timeout }.merge(opts)
+        buffer    = ''
+        found     = nil
+        f         = Fiber.current
+        trace     = caller
+        timer     = nil
+
+        timeout = proc do
+          shell.on_data {|c,d| }
+          f.resume(TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}"))
+        end
+        shell.on_data do |ch,data|
+          buffer = "#{buffer}#{data}"
+          debug("data: #{buffer.dump}")
+          if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
+            debug("data matched")
+            timer.respond_to?(:cancel) && timer.cancel
+            shell.on_data {|c,d| }
+            f.resume(buffer)
+          end
+        end
+
+        timer = EM::Timer.new(opts[:timeout], &timeout)
+        debug("set timer: #{timer} for #{opts[:timeout]}")
+        res = Fiber.yield
+        raise(res, res.message, Array(res.backtrace) + trace) if res.is_a?(Exception)
+        yield(res) if block_given?
+        res
       end
 
 
@@ -251,46 +278,6 @@ module EventMachine
     private
     # TODO move private stuff down to private
     #      e.g., #open, #connect,
-
-      # Wait for the shell to send data containing the given string.
-      # @param [String, Regexp] strregex a string or regex to match the console output against.
-      # @param [Hash] opts
-      # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
-      # @return [String, Exception] the contents of the buffer or a TimeoutError
-      def fiber_wait_for(strregex, opts = { })
-        opts      = { :timeout => @timeout }.merge(opts)
-        buffer    = ''
-        found     = nil
-        f         = Fiber.current
-        trace     = caller
-
-        timer   = nil
-        timeout = proc do
-          debug("timeout #{timer} fired")
-          shell.on_data {|c,d| }
-          e = TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}")
-          e.set_backtrace(trace)
-          error(e)
-          debug(e.backtrace)
-          f.resume(e)
-        end # timeout
-
-        shell.on_data do |ch,data|
-          buffer = "#{buffer}#{data}"
-          debug("data: #{buffer.dump}")
-          if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
-            debug("data matched")
-            debug("canceling timer #{timer}")
-            timer.respond_to?(:cancel) && timer.cancel
-            shell.on_data {|c,d| }
-            f.resume(buffer)
-          end
-        end #  |ch,data|
-
-        timer = EM::Timer.new(opts[:timeout], &timeout)
-        debug("set timer: #{timer} for #{opts[:timeout]}")
-        return Fiber.yield
-      end # wait_for(strregex, opts = { })
 
     end # class::Shell
   end # class::Ssh
