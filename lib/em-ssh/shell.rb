@@ -84,7 +84,7 @@ module EventMachine
       # @return [Boolean] true if the connection should be automatically re-established; default: false
       def reconnect?
         @reconnect == true
-      end # auto_connect?
+      end
 
       # Close the connection to the server and all child shells.
       # Disconnected shells cannot be split.
@@ -118,12 +118,12 @@ module EventMachine
       # @param [String] send_str
       # @return [String] all data in the buffer including the wait_str if it was found
       def send_and_wait(send_str, wait_str = nil, opts = {})
-        reconnect? ? connect : raise(Disconnected) if !connected?
+        reconnect? ? open : raise(Disconnected) if !connected?
         raise ClosedChannel if closed?
         debug("send_and_wait(#{send_str.inspect}, #{wait_str.inspect}, #{opts})")
         send_data(send_str)
         return wait_for(wait_str, opts)
-      end # send_and_wait(send_str, wait_str = nil, opts = {})
+      end
 
       # Wait for the shell to send data containing the given string.
       # @param [String, Regexp] strregex a string or regex to match the console output against.
@@ -134,7 +134,7 @@ module EventMachine
       # @raise ClosedChannel
       # @raise TimeoutError
       def wait_for(strregex, opts = { })
-        reconnect? ? connect : raise(Disconnected) unless connected?
+        reconnect? ? open : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
         opts      = { :timeout => @timeout }.merge(opts)
@@ -200,7 +200,8 @@ module EventMachine
               end
               conerr && conerr.cancel
               debug "***** shell open: #{shell}"
-              @shell = shell
+              @closed = false
+              @shell  = shell
               Fiber.new { yield(self) if block_given? }.resume
               f.resume(self)
             end # |shell,success|
@@ -208,7 +209,7 @@ module EventMachine
         end # |channel|
 
         return Fiber.yield
-      end # start
+      end
 
       # Create a new shell using the same ssh connection.
       # A connection will be established if this shell is not connected.
@@ -226,7 +227,7 @@ module EventMachine
         end
         fire(:split, child)
         block_given? ? yield(child).tap { child.close } : child
-      end # split
+      end
 
       # Connect to the server.
       # Does not open the shell; use #open or #split
@@ -242,7 +243,7 @@ module EventMachine
           f.resume(e)
         end
         return Fiber.yield
-      end # connect
+      end
 
 
       # Send data to the ssh server shell.
