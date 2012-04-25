@@ -73,6 +73,7 @@ module EventMachine
         @parent          = opts[:parent]
         @children        = []
         @reconnect       = opts[:reconnect]
+        @buffer          = ''
 
         if block_given?
           Fiber.new { open(&blk).tap{|r| raise r if r.is_a?(Exception) } }.resume
@@ -138,25 +139,35 @@ module EventMachine
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
         opts      = { :timeout => @timeout }.merge(opts)
-        buffer    = ''
         found     = nil
         f         = Fiber.current
         trace     = caller
         timer     = nil
+        matched   = false
 
-        timeout = proc do
-          shell.on_data {|c,d| }
-          f.resume(TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{buffer.inspect}"))
-        end
-        shell.on_data do |ch,data|
-          buffer = "#{buffer}#{data}"
-          debug("data: #{buffer.dump}")
-          if strregex.is_a?(Regexp) ? buffer.match(strregex)  :  buffer.include?(strregex)
+        data_callback = on(:data) do
+          if matched
+            debug("data_callback invoked when already matched")
+            next
+          end
+          matched = @buffer.match(strregex)
+          if matched
             debug("data matched")
             timer.respond_to?(:cancel) && timer.cancel
-            shell.on_data {|c,d| }
-            f.resume(buffer)
+            data_callback.cancel
+            @buffer=matched.post_match
+            f.resume(matched.pre_match + matched.to_s)
           end
+        end
+
+        # Check against current buffer
+        EM::next_tick {
+          data_callback.call() if @buffer.length>0
+        }
+
+        timeout = proc do
+          data_callback.cancel
+          f.resume(TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{@buffer.inspect}"))
         end
 
         timer = EM::Timer.new(opts[:timeout], &timeout)
@@ -201,7 +212,13 @@ module EventMachine
               conerr && conerr.cancel
               debug "***** shell open: #{shell}"
               @closed = false
-              @shell  = shell
+              @shell = shell
+              @shell.on_data do |ch,data|
+                debug("data: #{@buffer.dump}")
+                @buffer += data
+                fire(:data)
+              end
+
               Fiber.new { yield(self) if block_given? }.resume
               f.resume(self)
             end # |shell,success|
