@@ -50,8 +50,8 @@ module EventMachine
       #      channel.request_pty(options[:pty] || {}) do |pty,suc|
       def connect(host, user, opts = {}, &blk)
         logger.debug("#{self}.connect(#{host}, #{user}, #{opts})")
-        options = { :host => host, :user => user, :port => DEFAULT_PORT, :callback => blk }.merge(opts)
-        EM.connect(options[:host], options[:port], Connection, options)
+        options = { :host => host, :user => user, :port => DEFAULT_PORT }.merge(opts)
+        EM.connect(options[:host], options[:port], Connection, options, &blk)
       end
       alias :start :connect
     end # << self

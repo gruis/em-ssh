@@ -66,37 +66,45 @@ end
 
 
 EM.run do
-  EM::Ssh.start(host, options[:user], options) do |connection|
-    debug "**** connected: #{connection}"
-    connection.open_channel do |channel|
-      debug "**** channel: #{channel}"
-      channel.request_pty(options[:pty] || {}) do |pty,suc|
-        debug "***** pty: #{pty}; suc: #{suc}"
-        pty.send_channel_request("shell") do |shell,success|
-          raise ConnectionError, "Failed to create shell." unless success
-          debug "***** shell: #{shell}"
-          connected = true
+  EM::Ssh.start(host, options[:user], options) do |ssh|
+    ssh.errback do |err|
+      puts "#{err} (#{err.class})"
+      EM.stop
+    end 
 
-          shell.on_data { |c,d| $stdout.print d } 
-          shell.on_extended_data { |c,data| $STDERR.print data }
-          shell.on_eof do
-            shell.close
-            EM.stop
-          end # 
+    ssh.callback do |connection|
+      debug "**** connected: #{connection}"
+      connection.open_channel do |channel|
+        debug "**** channel: #{channel}"
+        channel.request_pty(options[:pty] || {}) do |pty,suc|
+          debug "***** pty: #{pty}; suc: #{suc}"
+          pty.send_channel_request("shell") do |shell,success|
+            raise ConnectionError, "Failed to create shell." unless success
+            debug "***** shell: #{shell}"
+            connected = true
 
-          trap("SIGINT") { shell.send_data("\C-c") }
-          trap("SIGEXIT") do
-            shell.close
-            trap("SIGINT", "SIG_DFL")
-          end # 
+            shell.on_data { |c,d| $stdout.print d } 
+            shell.on_extended_data { |c,data| $STDERR.print data }
+            shell.on_eof do
+              shell.close
+              EM.stop
+            end # 
 
-          conn        = EM.watch($stdin, CInput)
-          conn.shell  = shell
-          conn.notify_readable = true
+            trap("SIGINT") { shell.send_data("\C-c") }
+            trap("SIGEXIT") do
+              shell.close
+              trap("SIGINT", "SIG_DFL")
+            end # 
 
-        end # |shell,success|
-      end # |pty,suc|
-    end # |channel|
+            conn        = EM.watch($stdin, CInput)
+            conn.shell  = shell
+            conn.notify_readable = true
+
+          end # |shell,success|
+        end # |pty,suc|
+      end # |channel|
+    end
+
   end #  |connection|  
 end # EM.start
 

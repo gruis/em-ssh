@@ -5,6 +5,7 @@ module EventMachine
     # itself into Net::SSH so that the EventMachine reactor loop can take the place of the Net::SSH event loop.
     # Most of the methods here are only for compatibility with Net::SSH
     class Connection < EventMachine::Connection
+      include EM::Deferrable
       include Log
 
       # Allows other objects to register callbacks with events that occur on a Ssh instance
@@ -127,11 +128,26 @@ module EventMachine
         @timeout        = options[:timeout] || TIMEOUT
 
         begin
-          on(:connected, &options[:callback]) if options[:callback]
-          @nocon          = on(:closed) { raise ConnectionFailed, @host }
-          @contimeout     = EM::Timer.new(@timeout) { raise ConnectionTimeout, @host }
+          on(:connected) do |session|
+            succeed(session, @host)
+          end
+          on(:error) do |e|
+            fail(e)
+            close_connection
+          end
+          @nocon          = on(:closed) do
+            fail(SshError.new(@host))
+            close_connection
+          end
+          @contimeout     = EM::Timer.new(@timeout) do
+            fail(ConnectionTimeout.new(@host))
+            close_connection
+          end
 
-          @error_callback = lambda { |code| raise SshError.new(code) }
+          @error_callback = lambda do |code|
+            fail(SshError.new(code))
+            close_connection
+          end
 
           @host_key_verifier = select_host_key_verifier(options[:paranoid])
           @server_version    = ServerVersion.new(self)
@@ -149,7 +165,6 @@ module EventMachine
                   fire(:connected, Session.new(self, options))
                 else
                   fire(:error, Net::SSH::AuthenticationFailed.new(user))
-                  close_connection
                 end # auth.authenticate("ssh-connection", user, options[:password])
               end.resume # Fiber
             end # :algo_init
@@ -157,7 +172,7 @@ module EventMachine
 
         rescue Exception => e
           log.fatal("caught an error during initialization: #{e}\n   #{e.backtrace.join("\n   ")}")
-          Process.exit
+          fail(e)
         end # begin
         self
       end # initialize(options = {})
@@ -273,7 +288,12 @@ module EventMachine
         when :very then
           Net::SSH::Verifiers::Strict.new
         else
-          paranoid.respond_to?(:verify) ? paranoid : (raise ArgumentError.new("argument to :paranoid is not valid: #{paranoid.inspect}"))
+          if paranoid.respond_to?(:verify)
+            paranoid
+          else
+            fail(@host, ArgumentError.new("argument to :paranoid is not valid: #{paranoid.inspect}"))
+            close_connection
+          end # paranoid.respond_to?(:verify)
         end # paranoid
       end # select_host_key_verifier(paranoid)
     end # class::Connection < EventMachine::Connection

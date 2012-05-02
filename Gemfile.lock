@@ -29,7 +29,6 @@ PLATFORMS
 
 DEPENDENCIES
   bluecloth
-  bundler (~> 1.0.0)
   em-ssh!
   highline
   rspec (> 2.2.0)

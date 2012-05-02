@@ -61,7 +61,9 @@ module EventMachine
           @packet_length = @packet.read_long
         end
         need = @packet_length + 4 - server.block_size
-        raise SshError, "padding error, need #{need} block #{server.block_size}" if need % server.block_size != 0
+        if need % server.block_size != 0
+          @connection.fire(:error, SshError.new("padding error, need #{need} block #{server.block_size}"))
+        end
 
         return nil if available < need + server.hmac.mac_length
 
@@ -82,7 +84,10 @@ module EventMachine
         padding = @packet.read(padding_length) if padding_length > 0
 
         my_computed_hmac = server.hmac.digest([server.sequence_number, @packet.content].pack("NA*"))
-        raise Net::SSH::Exception, "corrupted mac detected" if real_hmac != my_computed_hmac
+        if real_hmac != my_computed_hmac
+          @connection.fire(:error, Net::SSH::Exception.new("corrupted mac detected"))
+          return
+        end
 
         # try to decompress the payload, in case compression is active
         payload = server.decompress(payload)

@@ -23,7 +23,9 @@ module EventMachine
           if @version[-1] == "\n"
             @version.chomp!
             log.debug("server version: #{@version}")
-            raise SshError.new("incompatible SSH version `#{@version}'") unless @version.match(/^SSH-(1\.99|2\.0)-/)
+            unless @version.match(/^SSH-(1\.99|2\.0)-/)
+              return connection.fire(:error, SshError.new("incompatible SSH version `#{@version}'"))
+            end
             log.debug("local version: #{Net::SSH::Transport::ServerVersion::PROTO_VERSION}")
             connection.send_data("#{Net::SSH::Transport::ServerVersion::PROTO_VERSION}\r\n")
             cb.cancel

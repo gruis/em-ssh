@@ -34,7 +34,10 @@ module EventMachine
 
       def register_callbacks
         transport.on(:packet) do |packet|
-          raise SshError, "unexpected response #{packet.type} (#{packet.inspect})" unless MAP.key?(packet.type)
+          unless MAP.key?(packet.type)
+            transport.fire(:error, SshError.new("unexpected response #{packet.type} (#{packet.inspect})"))
+            return
+          end
           send(MAP[packet.type], packet)
         end #  |packet|
 

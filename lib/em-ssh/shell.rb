@@ -235,11 +235,15 @@ module EventMachine
         return if connected?
         trace = caller
         f = Fiber.current
-        con = ::EM::Ssh.start(host, user, connect_opts) { |connection| f.resume(@connection = connection) }
-        con.on(:error) do |e|
-          e.set_backtrace(trace + Array(e.backtrace))
-          fire(:error, e)
-          f.resume(e)
+        ::EM::Ssh.start(host, user, connect_opts) do |connection|
+          connection.callback do |ssh|
+            f.resume(@connection = ssh)
+          end # ssh
+          connection.errback do |e|
+            e.set_backtrace(trace + Array(e.backtrace))
+            fire(:error, e)
+            f.resume(e)
+          end # err
         end
         return Fiber.yield
       end # connect
