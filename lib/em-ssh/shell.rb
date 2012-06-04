@@ -138,14 +138,22 @@ module EventMachine
         reconnect? ? open : raise(Disconnected) unless connected?
         raise ClosedChannel if closed?
         debug("wait_for(#{strregex.inspect}, #{opts})")
-        opts      = { :timeout => @timeout }.merge(opts)
-        found     = nil
-        f         = Fiber.current
-        trace     = caller
-        timer     = nil
-        matched   = false
+        opts          = { :timeout => @timeout }.merge(opts)
+        found         = nil
+        f             = Fiber.current
+        trace         = caller
+        timer         = nil
+        data_callback = nil
+        matched       = false
+        started       = Time.new
+
+        timeout = proc do
+          data_callback && data_callback.cancel
+          f.resume(TimeoutError.new("#{host}: inactivity timeout (#{opts[:timeout]}) while waiting for #{strregex.inspect}; received: #{@buffer.inspect}; waited total: #{Time.new - started}"))
+        end
 
         data_callback = on(:data) do
+          timer && timer.cancel
           if matched
             debug("data_callback invoked when already matched")
             next
@@ -153,10 +161,11 @@ module EventMachine
           matched = @buffer.match(strregex)
           if matched
             debug("data matched")
-            timer.respond_to?(:cancel) && timer.cancel
             data_callback.cancel
             @buffer=matched.post_match
             f.resume(matched.pre_match + matched.to_s)
+          else
+            timer = EM::Timer.new(opts[:timeout], &timeout)
           end
         end
 
@@ -164,11 +173,6 @@ module EventMachine
         EM::next_tick {
           data_callback.call() if @buffer.length>0
         }
-
-        timeout = proc do
-          data_callback.cancel
-          f.resume(TimeoutError.new("#{host}: timeout while waiting for #{strregex.inspect}; received: #{@buffer.inspect}"))
-        end
 
         timer = EM::Timer.new(opts[:timeout], &timeout)
         debug("set timer: #{timer} for #{opts[:timeout]}")
