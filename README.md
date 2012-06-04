@@ -3,7 +3,7 @@ Em-ssh is a net-ssh adapter for EventMachine. For the most part you can take any
 
 Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.com/) library. Please report any bugs with em-ssh to [https://github.com/simulacre/em-ssh/issues](https://github.com/simulacre/em-ssh/issues)
 ##Installation
-	gem install em-ssh
+	gem install em-ssh --pre
 
 ##Synopsis
 	EM.run do
