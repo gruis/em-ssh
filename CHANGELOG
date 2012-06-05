@@ -1,6 +1,7 @@
 0.3.0
  - Connection errors are provided as Deferreds and don't halt the entire reactor
  - Shell timeouts are for inactivity and not total duration
+ - Shell buffer is maintained until wait_for matches; results from send_cmd without a corresponding wait_for will be retained in the buffer.
 
 0.1.0
  - Connection#initialize will fire :error Net::SSH::AuthenticationError when authentication fails rather than raising an error
