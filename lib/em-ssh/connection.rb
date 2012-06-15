@@ -246,7 +246,7 @@ module EventMachine
                 end # begin
               end.resume
             else
-              @queue.push(packet)
+              @queue.push(packet) unless packet.type >= CHANNEL_OPEN
               if algorithms.allow?(packet)
                 fire(:packet, packet)
                 fire(:session_packet, packet) if packet.type >= GLOBAL_REQUEST
