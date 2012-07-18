@@ -43,8 +43,10 @@ end # host.nil?
 abort("a host is required") if host.nil?
 
 options[:user], host = *host.split('@') if host.include?('@')
-options[:user], options[:password] = *options[:user].split(':') if options[:user].include?(':')
+options[:user], options[:password] = *options[:user].split(':') if options[:user] && options[:user].include?(':')
 host, options[:port] = *host.split(':') if host.include?(':')
+options[:user] = ENV['USER'] unless options[:user]
+options[:password] = HighLine.new.ask("#{options[:user]}'s password: "){|q| q.echo = "*" } unless options[:password]
 connected = false
 
 
