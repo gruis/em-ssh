@@ -155,12 +155,10 @@ module EventMachine
         data_callback = on(:data) do
           timer && timer.cancel
           if matched
-            debug("data_callback invoked when already matched")
+            warn("data_callback invoked when already matched")
             next
           end
-          matched = @buffer.match(strregex)
-          if matched
-            debug("data matched")
+          if (matched = @buffer.match(strregex))
             data_callback.cancel
             @buffer=matched.post_match
             f.resume(matched.pre_match + matched.to_s)
@@ -218,8 +216,8 @@ module EventMachine
               @closed = false
               @shell = shell
               @shell.on_data do |ch,data|
-                debug("data: #{@buffer.dump}")
                 @buffer += data
+                debug("data: #{@buffer.dump}")
                 fire(:data)
               end
 

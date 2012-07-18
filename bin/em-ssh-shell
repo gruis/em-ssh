@@ -46,6 +46,7 @@ waitstr = ARGV.shift
 commands = ARGV
 abort("wait_string is required") if waitstr.nil?
 abort("command is required") if commands.empty?
+waitstr = Regexp.escape(waitstr)
 
 
 EM.run do
