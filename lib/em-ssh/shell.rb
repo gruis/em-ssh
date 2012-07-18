@@ -25,6 +25,7 @@ module EventMachine
     class Shell
       include Log
       include Callbacks
+      include EM::Deferrable
 
       # Global timeout for wait operations; can be overriden by :timeout option to new
       TIMEOUT = 15
@@ -75,11 +76,18 @@ module EventMachine
         @reconnect       = opts[:reconnect]
         @buffer          = ''
 
-        if block_given?
-          Fiber.new { open(&blk).tap{|r| raise r if r.is_a?(Exception) } }.resume
-        else
-          open.tap{|r| raise r if r.is_a?(Exception) }
-        end # block_given?
+        yield self if block_given?
+        Fiber.new {
+          opened = false
+          begin
+            open do
+              opened = true
+              succeed(self)
+            end
+          rescue => e
+            fail(e) unless opened
+          end
+        }.resume
       end
 
       # @return [Boolean] true if the connection should be automatically re-established; default: false
@@ -201,33 +209,38 @@ module EventMachine
           connect
         end # connected?
 
-        connection || raise(ConnectionError, "failed to create shell for #{host}: #{conerr} (#{conerr.class})")
+        if !connection
+          # TODO remove the on(:error) above
+          #f.resume(ConnectionError.new("failed to create shell for #{host}: #{conerr} (#{conerr.class})").tap{|e| e.set_backtrace(caller)})
+        else
+          connection.open_channel do |channel|
+            debug "**** channel open: #{channel}"
+            channel.request_pty(options[:pty] || {}) do |pty,suc|
+              debug "***** pty open: #{pty}; suc: #{suc}"
+              pty.send_channel_request("shell") do |shell,success|
+                unless success
+                  f.resume(ConnectionError.new("Failed to create shell").tap{|e| e.set_backtrace(caller) })
+                end
+                conerr && conerr.cancel
+                debug "***** shell open: #{shell}"
+                @closed = false
+                @shell = shell
+                @shell.on_data do |ch,data|
+                  @buffer += data
+                  debug("data: #{@buffer.dump}")
+                  fire(:data)
+                end
 
-        connection.open_channel do |channel|
-          debug "**** channel open: #{channel}"
-          channel.request_pty(options[:pty] || {}) do |pty,suc|
-            debug "***** pty open: #{pty}; suc: #{suc}"
-            pty.send_channel_request("shell") do |shell,success|
-              unless success
-                f.resume(ConnectionError.new("Failed to create shell").tap{|e| e.set_backtrace(caller) })
-              end
-              conerr && conerr.cancel
-              debug "***** shell open: #{shell}"
-              @closed = false
-              @shell = shell
-              @shell.on_data do |ch,data|
-                @buffer += data
-                debug("data: #{@buffer.dump}")
-                fire(:data)
-              end
+                Fiber.new { yield(self) if block_given? }.resume
+                f.resume(self)
+              end # |shell,success|
+            end # |pty,suc|
+          end # |channel|
+        end # !connection
 
-              Fiber.new { yield(self) if block_given? }.resume
-              f.resume(self)
-            end # |shell,success|
-          end # |pty,suc|
-        end # |channel|
-
-        return Fiber.yield
+        return Fiber.yield.tap do |r|
+          r.is_a?(Exception) ? raise(r) : r
+        end
       end
 
       # Create a new shell using the same ssh connection.
@@ -252,7 +265,7 @@ module EventMachine
       # Does not open the shell; use #open or #split
       # You generally won't need to call this on your own.
       def connect
-        return if connected?
+        return @connection if connected?
         trace = caller
         f = Fiber.current
         ::EM::Ssh.start(host, user, connect_opts) do |connection|

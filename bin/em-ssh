@@ -70,7 +70,7 @@ end
 EM.run do
   EM::Ssh.start(host, options[:user], options) do |ssh|
     ssh.errback do |err|
-      puts "#{err} (#{err.class})"
+      puts "error: #{err} (#{err.class})"
       EM.stop
     end 
 
