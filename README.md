@@ -6,53 +6,56 @@ Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.c
 	gem install em-ssh 
 
 ##Synopsis
-	EM.run do
-	  EM::Ssh.start(host, user, :password => password) do |connection|
-      connection.errback do |err|
-        $stderr.puts "#{err} (#{err.class})"
-      end
-      connection.callback do |ssh|
-        # capture all stderr and stdout output from a remote process
-        ssh.exec!('uname -a').tap {|r| puts "\nuname: #{r}"}
-      
-        # capture only stdout matching a particular pattern
-        stdout = ""
-        ssh.exec!("ls -l /home") do |channel, stream, data|
-          stdout << data if stream == :stdout
-        end
-        puts "\n#{stdout}"
-      
-        # run multiple processes in parallel to completion
-        ssh.exec('ping -c 1 www.google.com')
-        ssh.exec('ping -c 1 www.yahoo.com')
-        ssh.exec('ping -c 1 www.rakuten.co.jp')
-      
-        #open a new channel and configure a minimal set of callbacks, then wait for the channel to finishes (closees).
-        channel = ssh.open_channel do |ch|
-          ch.exec "/usr/local/bin/ruby /path/to/file.rb" do |ch, success|
-            raise "could not execute command" unless success
-      
-            # "on_data" is called when the process writes something to stdout
-            ch.on_data do |c, data|
-              $stdout.print data
-            end
-          
-            # "on_extended_data" is called when the process writes something to stderr
-            ch.on_extended_data do |c, type, data|
-              $stderr.print data
-            end
-          
-            ch.on_close { puts "done!" }
-          end
-        end
-      
-        channel.wait
 
-        ssh.close
-        EM.stop
+```ruby
+EM.run do
+  EM::Ssh.start(host, user, :password => password) do |connection|
+    connection.errback do |err|
+      $stderr.puts "#{err} (#{err.class})"
+    end
+    connection.callback do |ssh|
+      # capture all stderr and stdout output from a remote process
+      ssh.exec!('uname -a').tap {|r| puts "\nuname: #{r}"}
+    
+      # capture only stdout matching a particular pattern
+      stdout = ""
+      ssh.exec!("ls -l /home") do |channel, stream, data|
+        stdout << data if stream == :stdout
       end
-	  end
-	end
+      puts "\n#{stdout}"
+    
+      # run multiple processes in parallel to completion
+      ssh.exec('ping -c 1 www.google.com')
+      ssh.exec('ping -c 1 www.yahoo.com')
+      ssh.exec('ping -c 1 www.rakuten.co.jp')
+    
+      #open a new channel and configure a minimal set of callbacks, then wait for the channel to finishes (closees).
+      channel = ssh.open_channel do |ch|
+        ch.exec "/usr/local/bin/ruby /path/to/file.rb" do |ch, success|
+          raise "could not execute command" unless success
+    
+          # "on_data" is called when the process writes something to stdout
+          ch.on_data do |c, data|
+            $stdout.print data
+          end
+        
+          # "on_extended_data" is called when the process writes something to stderr
+          ch.on_extended_data do |c, type, data|
+            $stderr.print data
+          end
+        
+          ch.on_close { puts "done!" }
+        end
+      end
+    
+      channel.wait
+
+      ssh.close
+      EM.stop
+    end
+  end
+end
+```
 
 See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/ssh/v2/api/index.html)
 
@@ -61,24 +64,29 @@ See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/
 Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
 
 ### Example
-	require 'em-ssh/shell'
-	EM.run {
-	  EM::Ssh::Shell.new(host, ENV['USER'], "") do |shell|
-	    shell.callback do
-	      shell.expect('~]$ ')
-	      shell.expect('~]$ ','uname -a')
-	      shell.expect('~]$ ')
-	      shell.expect('~]$ ', '/sbin/ifconfig -a')
-	      EM.stop
-	    end
-	    shell.errback do
-	      puts "error: #{err} (#{err.class})" 
-	      EM.stop
-	    end
-	  end
-	}
+
+```ruby
+require 'em-ssh/shell'
+EM.run {
+  EM::Ssh::Shell.new(host, ENV['USER'], "") do |shell|
+    shell.callback do
+      shell.expect('~]$ ')
+      shell.expect('~]$ ','uname -a')
+      shell.expect('~]$ ')
+      shell.expect('~]$ ', '/sbin/ifconfig -a')
+      EM.stop
+    end
+    shell.errback do
+      puts "error: #{err} (#{err.class})" 
+      EM.stop
+    end
+  end
+}
+```
 
 ### Run Multiple Commands in Parallel
+
+```ruby
   require 'em-ssh/shell'
   EM.run do
     EM::Ssh::Shell.new(host, ENV['USER'], '') do |shell|
@@ -108,6 +116,7 @@ Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::
       end 
     end 
   end 
+```
 
 ## Other Examples
 See bin/em-ssh for an example of a basic replacement for system ssh.
