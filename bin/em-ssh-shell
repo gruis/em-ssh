@@ -15,14 +15,18 @@ def abort(msg)
   Process.exit
 end # abort(msg)
 
-options = {}
-opts    = OptionParser.new
+options     = {:auth_methods => ['publickey', 'password'], :port => 22}
+opts        = OptionParser.new
 opts.banner += " [user:[password]@]host[:port] wait_string command [command command ...]"
-options[:port] = 22
+
 opts.on('-u', '--user String', String) { |u| options[:user] = u }
 opts.on('-p', '--password [String]', String) do |p| 
   options[:password] = p.nil? ? HighLine.new.ask("password: "){|q| q.echo = "*" } : p
 end
+opts.on('-t', '--timeout Integer', Integer) { |t| options[:timeout] = t }
+opts.on('--[no-]publickey', "don't attempt public key auth") do |pk|
+  options[:auth_methods] = ['password'] unless pk
+end 
 opts.on('-v', '--verbose') do 
   EM::Ssh.logger.level = EM::Ssh.logger.level - 1 unless EM::Ssh.logger.level == 0 
   options[:verbose] = EM::Ssh.logger.level
@@ -38,11 +42,11 @@ abort("a host is required") if host.nil?
 options[:user], host = *host.split('@') if host.include?('@')
 options[:user], options[:password] = *options[:user].split(':') if options[:user] && options[:user].include?(':')
 host, options[:port] = *host.split(':') if host.include?(':')
-options[:user] = ENV['USER'] unless options[:user]
-options[:password] = HighLine.new.ask("#{options[:user]}'s password: "){|q| q.echo = "*" } unless options[:password]
+options[:user]       = ENV['USER'] unless options[:user]
+options[:password]   = HighLine.new.ask("#{options[:user]}'s password: "){|q| q.echo = "*" } unless options[:password]
 
 
-waitstr = ARGV.shift
+waitstr  = ARGV.shift
 commands = ARGV
 abort("wait_string is required") if waitstr.nil?
 abort("command is required") if commands.empty?
@@ -50,7 +54,7 @@ waitstr = Regexp.escape(waitstr)
 
 
 EM.run do
-  EM::Ssh::Shell.new(host, options[:user], options[:password], :net_ssh => options) do |shell|
+  EM::Ssh::Shell.new(host, options[:user], options[:password], :timeout => options[:timeout], :net_ssh => options) do |shell|
     shell.errback do |err|
       puts "error: #{err} (#{err.class})"
       EM.stop
@@ -61,21 +65,12 @@ EM.run do
         mys = shell.split
         mys.on(:closed) { info("#{mys} has closed") }
         
-        EM.next_tick do
-          Fiber.new {
-            debug("#{mys} waited for: '#{mys.wait_for(waitstr)}'")
-            debug("#{mys} send: #{command.inspect}")
-            puts "#{mys} result: '#{mys.send_and_wait(command, waitstr)}'"
-            mys.close
-          }.resume
-        end
-      end #  |command|
-      
-      shell.on(:childless) do
-        info("#{shell}'s children all closed")
-        shell.close
-        EM.stop
-      end # :childless
+        debug("#{mys} waited for: '#{mys.wait_for(waitstr)}'")
+        debug("#{mys} send: #{command.inspect}")
+        puts "#{mys} result: '#{mys.send_and_wait(command, waitstr)}'"
+        mys.close
+      end 
+      EM.stop
     end 
-  end #  |shell|
+  end # |shell|
 end # EM.run

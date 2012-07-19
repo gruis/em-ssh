@@ -64,31 +64,19 @@ Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::
 	require 'em-ssh/shell'
 	EM.run {
 	  EM::Ssh::Shell.new(host, 'caleb', "") do |shell|
-	    shell.should be_a(EventMachine::Ssh::Shell)
-	    shell.wait_for(']$')
-	    shell.send_and_wait('uname -a', ']$')
-	    shell.wait_for(']$')
-	    shell.send_and_wait('/sbin/ifconfig -a', ']$')
-	    timer.cancel
-	    EM.stop
+	    shell.callback do
+	      shell.wait_for(']$')
+	      shell.send_and_wait('uname -a', ']$')
+	      shell.wait_for(']$')
+	      shell.send_and_wait('/sbin/ifconfig -a', ']$')
+	      EM.stop
+	    end
+	    shell.errback do
+	      puts "error: #{err} (#{err.class})" 
+	      EM.stop
+	    end
 	  end
 	}
-
-#### Synchrony Example
-	require 'em-ssh/shell'
-	EM.run {
-		Fiber.new {
-			shell = EM::Ssh::Shell.new(host, 'caleb', '')
-			shell.wait_for(']$')
-			shell.send_and_wait('sudo su -', 'password for caleb: ')
-			shell.send_and_wait('password', ']$')
-			output = shell.send_and_wait('/etc/init.d/openvpn restart', ']$')
-			# ...
-			shell.send_and_wait('exit', ']$')
-			shell.send_data('exit')
-		}.resume
-	}
-
 
 
 ## Other Examples

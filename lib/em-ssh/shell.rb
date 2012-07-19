@@ -78,15 +78,8 @@ module EventMachine
 
         yield self if block_given?
         Fiber.new {
-          opened = false
-          begin
-            open do
-              opened = true
-              succeed(self)
-            end
-          rescue => e
-            fail(e) unless opened
-          end
+          open rescue fail($!)
+          succeed(self) if connected? && !closed?
         }.resume
       end
 
@@ -99,7 +92,7 @@ module EventMachine
       # Disconnected shells cannot be split.
       def disconnect
         close
-        connection.close
+        connection && connection.close
       end
 
       # @return [Boolean] true if the connection is still alive
@@ -182,10 +175,13 @@ module EventMachine
 
         timer = EM::Timer.new(opts[:timeout], &timeout)
         debug("set timer: #{timer} for #{opts[:timeout]}")
-        res = Fiber.yield
-        raise(res, res.message, Array(res.backtrace) + trace) if res.is_a?(Exception)
-        yield(res) if block_given?
-        res
+        Fiber.yield.tap do |res|
+          if res.is_a?(Exception)
+            res.set_backtrace(Array(res.backtrace) + trace)
+            raise res
+          end
+          yield(res) if block_given?
+        end
       end
 
 
@@ -197,50 +193,35 @@ module EventMachine
         f      = Fiber.current
         trace  = caller
 
-        conerr = nil
-        unless connected?
-          conerr = on(:error) do |e|
-            error("#{e} (#{e.class})")
-            e.set_backtrace(trace + Array(e.backtrace))
-            debug(e.backtrace)
-            conerr = e
-            f.resume(e)
-          end #  |e|
+        begin
           connect
-        end # connected?
-
-        if !connection
-          # TODO remove the on(:error) above
-          #f.resume(ConnectionError.new("failed to create shell for #{host}: #{conerr} (#{conerr.class})").tap{|e| e.set_backtrace(caller)})
-        else
           connection.open_channel do |channel|
             debug "**** channel open: #{channel}"
             channel.request_pty(options[:pty] || {}) do |pty,suc|
               debug "***** pty open: #{pty}; suc: #{suc}"
               pty.send_channel_request("shell") do |shell,success|
-                unless success
+                if !success
                   f.resume(ConnectionError.new("Failed to create shell").tap{|e| e.set_backtrace(caller) })
+                else
+                  debug "***** shell open: #{shell}"
+                  @closed = false
+                  @shell  = shell
+                  @shell.on_data do |ch,data|
+                    @buffer += data
+                    debug("data: #{@buffer.dump}")
+                    fire(:data)
+                  end
+                  Fiber.new { yield(self) if block_given? }.resume
+                  f.resume(self)
                 end
-                conerr && conerr.cancel
-                debug "***** shell open: #{shell}"
-                @closed = false
-                @shell = shell
-                @shell.on_data do |ch,data|
-                  @buffer += data
-                  debug("data: #{@buffer.dump}")
-                  fire(:data)
-                end
-
-                Fiber.new { yield(self) if block_given? }.resume
-                f.resume(self)
               end # |shell,success|
             end # |pty,suc|
           end # |channel|
-        end # !connection
-
-        return Fiber.yield.tap do |r|
-          r.is_a?(Exception) ? raise(r) : r
+        rescue => e
+          raise ConnectionError.new("failed to create shell for #{host}: #{e} (#{e.class})")
         end
+
+        return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
       end
 
       # Create a new shell using the same ssh connection.
@@ -271,14 +252,13 @@ module EventMachine
         ::EM::Ssh.start(host, user, connect_opts) do |connection|
           connection.callback do |ssh|
             f.resume(@connection = ssh)
-          end # ssh
+          end
           connection.errback do |e|
             e.set_backtrace(trace + Array(e.backtrace))
-            fire(:error, e)
             f.resume(e)
-          end # err
+          end
         end
-        return Fiber.yield
+        return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
       end
 
 
