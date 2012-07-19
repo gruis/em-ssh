@@ -3,7 +3,7 @@ Em-ssh is a net-ssh adapter for EventMachine. For the most part you can take any
 
 Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.com/) library. Please report any bugs with em-ssh to [https://github.com/simulacre/em-ssh/issues](https://github.com/simulacre/em-ssh/issues)
 ##Installation
-	gem install em-ssh 
+  gem install em-ssh 
 
 ##Synopsis
 
@@ -87,35 +87,35 @@ EM.run {
 ### Run Multiple Commands in Parallel
 
 ```ruby
-  require 'em-ssh/shell'
-  EM.run do
-    EM::Ssh::Shell.new(host, ENV['USER'], '') do |shell|
-      shell.errback do |err|
-        puts "error: #{err} (#{err.class})"
-        EM.stop
-      end 
+require 'em-ssh/shell'
+EM.run do
+  EM::Ssh::Shell.new(host, ENV['USER'], '') do |shell|
+    shell.errback do |err|
+      puts "error: #{err} (#{err.class})"
+      EM.stop
+    end 
 
-      shell.callback do 
-        commands.clone.each do |command|
-          mys = shell.split # provides a second session over the same connection
-          mys.on(:closed) do
-            commands.delete(command)
-            EM.stop if commands.empty?
-          end
+    shell.callback do 
+      commands.clone.each do |command|
+        mys = shell.split # provides a second session over the same connection
+        mys.on(:closed) do
+          commands.delete(command)
+          EM.stop if commands.empty?
+        end
 
-          puts("waiting for: #{waitstr.inspect}")
-          # When given a block, Shell#expect does not 'block'
-          mys.expect(waitstr) do 
-            puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
-            mys.expect(waitstr, command) do |result|
-              puts "#{mys} result: '#{result}'"
-              mys.close
-            end 
+        puts("waiting for: #{waitstr.inspect}")
+        # When given a block, Shell#expect does not 'block'
+        mys.expect(waitstr) do 
+          puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
+          mys.expect(waitstr, command) do |result|
+            puts "#{mys} result: '#{result}'"
+            mys.close
           end 
         end 
       end 
     end 
   end 
+end 
 ```
 
 ## Other Examples
