@@ -61,16 +61,22 @@ EM.run do
     end 
 
     shell.callback do 
-      commands.each do |command|
+      commands.clone.each do |command|
         mys = shell.split
-        mys.on(:closed) { info("#{mys} has closed") }
-        
-        debug("#{mys} waited for: '#{mys.wait_for(waitstr)}'")
-        debug("#{mys} send: #{command.inspect}")
-        puts "#{mys} result: '#{mys.send_and_wait(command, waitstr)}'"
-        mys.close
+        mys.on(:closed) do
+          commands.delete(command)
+          EM.stop if commands.empty?
+        end
+
+        puts("waiting for: #{waitstr.inspect}")
+        mys.expect(waitstr) do 
+          puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
+          mys.expect(waitstr, command) do |result|
+            puts "#{mys} result: '#{result}'"
+            mys.close
+          end 
+        end 
       end 
-      EM.stop
     end 
-  end # |shell|
-end # EM.run
+  end 
+end 

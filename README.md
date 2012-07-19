@@ -3,7 +3,7 @@ Em-ssh is a net-ssh adapter for EventMachine. For the most part you can take any
 
 Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.com/) library. Please report any bugs with em-ssh to [https://github.com/simulacre/em-ssh/issues](https://github.com/simulacre/em-ssh/issues)
 ##Installation
-	gem install em-ssh --pre
+	gem install em-ssh 
 
 ##Synopsis
 	EM.run do
@@ -63,12 +63,12 @@ Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::
 ### Example
 	require 'em-ssh/shell'
 	EM.run {
-	  EM::Ssh::Shell.new(host, 'caleb', "") do |shell|
+	  EM::Ssh::Shell.new(host, ENV['USER'], "") do |shell|
 	    shell.callback do
-	      shell.wait_for(']$')
-	      shell.send_and_wait('uname -a', ']$')
-	      shell.wait_for(']$')
-	      shell.send_and_wait('/sbin/ifconfig -a', ']$')
+	      shell.expect('~]$ ')
+	      shell.expect('~]$ ','uname -a')
+	      shell.expect('~]$ ')
+	      shell.expect('~]$ ', '/sbin/ifconfig -a')
 	      EM.stop
 	    end
 	    shell.errback do
@@ -78,6 +78,36 @@ Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::
 	  end
 	}
 
+### Run Multiple Commands in Parallel
+  require 'em-ssh/shell'
+  EM.run do
+    EM::Ssh::Shell.new(host, ENV['USER'], '') do |shell|
+      shell.errback do |err|
+        puts "error: #{err} (#{err.class})"
+        EM.stop
+      end 
+
+      shell.callback do 
+        commands.clone.each do |command|
+          mys = shell.split # provides a second session over the same connection
+          mys.on(:closed) do
+            commands.delete(command)
+            EM.stop if commands.empty?
+          end
+
+          puts("waiting for: #{waitstr.inspect}")
+          # When given a block, Shell#expect does not 'block'
+          mys.expect(waitstr) do 
+            puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
+            mys.expect(waitstr, command) do |result|
+              puts "#{mys} result: '#{result}'"
+              mys.close
+            end 
+          end 
+        end 
+      end 
+    end 
+  end 
 
 ## Other Examples
 See bin/em-ssh for an example of a basic replacement for system ssh.

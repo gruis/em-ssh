@@ -6,8 +6,8 @@ module EventMachine
     # @example Retrieve the output of ifconfig -a on a server
     #   EM.run{
     #     shell = EM::Ssh::Shell.new(host, user, password)
-    #     shell.wait_for('@icaleb ~]$')
-    #     interfaces = send_and_wait('/sbin/ifconfig -a', '@icaleb ~]$')
+    #     shell.expect('~]$ ')
+    #     interfaces = expect('~]$ ', '/sbin/ifconfig -a')
     #
     # Shells can be easily and quickly duplicated (#split) without the need to establish another connection.
     # Shells provide :closed, :childless, and :split callbacks.
@@ -21,7 +21,7 @@ module EventMachine
     #
     #   admin_shell = shell.split
     #   admin_shell.on(:closed) { warn("admin shell has closed") }
-    #   admin_shell.send_and_wait('sudo su -', ']$')
+    #   admin_shell.expect(']$', 'sudo su -')
     class Shell
       include Log
       include Callbacks
@@ -76,6 +76,7 @@ module EventMachine
         @reconnect       = opts[:reconnect]
         @buffer          = ''
 
+        # TODO make all methods other than #callback and #errback inaccessible until connected? == true
         yield self if block_given?
         Fiber.new {
           open rescue fail($!)
@@ -114,6 +115,40 @@ module EventMachine
       # @return [Boolean] Has this shell been closed.
       def closed?
         @closed == true
+      end
+
+      # Wait for a number of seconds until a specified string or regexp is matched by the
+      # data returned from the ssh connection. Optionally send a given string first.
+      #
+      # If a block is not provided the current Fiber will yield until strregex matches or
+      # :timeout # is reached.
+      #
+      # If a block is provided expect will return.
+      #
+      # @param [String, Regexp] strregex to match against
+      # @param [String] send_str the data to send before waiting
+      # @param [Hash] opts
+      # @option opts [Fixnum] :timeout (@timeout) number of seconds to wait when there is no activity
+      # @return [Shell, String] all data received up to an including strregex if a block is not provided.
+      #                         the Shell if a block is provided
+      # @example expect a prompt
+      #   expect(' ~]$ ')
+      # @example send a command and wait for a prompt
+      #   expect(' ~]$ ', '/sbin/ifconfig')
+      # @example expect a prompt and within 5 seconds
+      #   expect(' ~]$ ', :timeout => 5)
+      # @example send a command and wait up to 10 seconds for a prompt
+      #   expect(' ~]$ ', '/etc/sysconfig/openvpn restart', :timeout => 10)
+      def expect(strregex, send_str = nil, opts = {})
+        send_str, opts = nil, send_str if send_str.is_a?(Hash)
+        if block_given?
+          Fiber.new {
+            yield send_str ? send_and_wait(send_str, strregex, opts) : wait_for(strregex, opts)
+          }.resume
+          self
+        else
+          send_str ? send_and_wait(send_str, strregex, opts) : wait_for(strregex, opts)
+        end
       end
 
       # Send a string to the server and wait for a response containing a specified String or Regex.
