@@ -31,7 +31,7 @@ module EventMachine
       TIMEOUT = 15
       # @return [Net::SSH::Connection::Channel] The shell to which we can send_data
       attr_reader :shell
-      # @return [Net::SSH::Connection]
+      # @return [EM::Connection]
       attr_reader :connection
       # @return [Hash] the options passed to initialize
       attr_reader :options
