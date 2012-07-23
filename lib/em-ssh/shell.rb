@@ -246,7 +246,7 @@ module EventMachine
                   @shell.on_data do |ch,data|
                     @buffer += data
                     debug("data: #{@buffer.dump}")
-                    fire(:data)
+                    fire(:data, data)
                   end
                   Fiber.new { yield(self) if block_given? }.resume
                   f.resume(self)
