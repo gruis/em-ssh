@@ -72,7 +72,7 @@ module EventMachine
         @pass            = pass
         @options         = opts
         @connect_opts    = {:password => pass, :port => 22, :auth_methods => ['publickey', 'password']}.merge(opts[:net_ssh] || {})
-        @session         = opts[:connection]
+        @session         = opts[:session]
         @parent          = opts[:parent]
         @children        = []
         @reconnect       = opts[:reconnect]
@@ -268,7 +268,7 @@ module EventMachine
       # @return [Shell] child
       def split
         connect unless connected?
-        child = self.class.new(host, user, pass, {:connection => session, :parent => self}.merge(options))
+        child = self.class.new(host, user, pass, {:session => session, :parent => self}.merge(options))
         child.line_terminator = line_terminator
         children.push(child)
         child.on(:closed) do
