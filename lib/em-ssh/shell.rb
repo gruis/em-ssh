@@ -304,8 +304,12 @@ module EventMachine
       # You generally don't need to call this.
       # @see #send_and_wait
       # @param [String] d the data to send encoded as a string
-      def send_data(d)
-        shell.send_data("#{d}#{line_terminator}")
+      def send_data(d, send_newline=true)
+        if send_newline
+          shell.send_data("#{d}#{line_terminator}")
+        else
+          shell.send_data("#{d}")
+        end
       end
 
 
