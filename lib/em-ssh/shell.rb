@@ -31,7 +31,9 @@ module EventMachine
       TIMEOUT = 15
       # @return [Net::SSH::Connection::Channel] The shell to which we can send_data
       attr_reader :shell
-      # @return [EM::Connection]
+      # @return [EM::Ssh::Session]
+      attr_reader :session
+      # @return [EM::Ssh::Connection]
       attr_reader :connection
       # @return [Hash] the options passed to initialize
       attr_reader :options
@@ -70,7 +72,7 @@ module EventMachine
         @pass            = pass
         @options         = opts
         @connect_opts    = {:password => pass, :port => 22, :auth_methods => ['publickey', 'password']}.merge(opts[:net_ssh] || {})
-        @connection      = opts[:connection]
+        @session         = opts[:session]
         @parent          = opts[:parent]
         @children        = []
         @reconnect       = opts[:reconnect]
@@ -93,12 +95,12 @@ module EventMachine
       # Disconnected shells cannot be split.
       def disconnect
         close
-        connection && connection.close
+        session && session.close
       end
 
-      # @return [Boolean] true if the connection is still alive
+      # @return [Boolean] true if the session is still alive
       def connected?
-        connection && !connection.closed?
+        session && !session.closed?
       end
 
       # Close this shell and all children.
@@ -230,7 +232,7 @@ module EventMachine
 
         begin
           connect
-          connection.open_channel do |channel|
+          session.open_channel do |channel|
             debug "**** channel open: #{channel}"
             channel.request_pty(options[:pty] || {}) do |pty,suc|
               debug "***** pty open: #{pty}; suc: #{suc}"
@@ -244,7 +246,7 @@ module EventMachine
                   @shell.on_data do |ch,data|
                     @buffer += data
                     debug("data: #{@buffer.dump}")
-                    fire(:data)
+                    fire(:data, data)
                   end
                   Fiber.new { yield(self) if block_given? }.resume
                   f.resume(self)
@@ -266,7 +268,7 @@ module EventMachine
       # @return [Shell] child
       def split
         connect unless connected?
-        child = self.class.new(host, user, pass, {:connection => connection, :parent => self}.merge(options))
+        child = self.class.new(host, user, pass, {:session => session, :parent => self}.merge(options))
         child.line_terminator = line_terminator
         children.push(child)
         child.on(:closed) do
@@ -281,12 +283,13 @@ module EventMachine
       # Does not open the shell; use #open or #split
       # You generally won't need to call this on your own.
       def connect
-        return @connection if connected?
+        return @session if connected?
         trace = caller
         f = Fiber.current
         ::EM::Ssh.start(host, user, connect_opts) do |connection|
+          @connection = connection
           connection.callback do |ssh|
-            f.resume(@connection = ssh)
+            f.resume(@session = ssh)
           end
           connection.errback do |e|
             e.set_backtrace(trace + Array(e.backtrace))
@@ -301,8 +304,12 @@ module EventMachine
       # You generally don't need to call this.
       # @see #send_and_wait
       # @param [String] d the data to send encoded as a string
-      def send_data(d)
-        shell.send_data("#{d}#{line_terminator}")
+      def send_data(d, send_newline=true)
+        if send_newline
+          shell.send_data("#{d}#{line_terminator}")
+        else
+          shell.send_data("#{d}")
+        end
       end
 
 
