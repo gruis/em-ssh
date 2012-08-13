@@ -138,7 +138,7 @@ module EventMachine
           end
 
           @nocon          = on(:closed) do
-            fail(SshError.new(@host))
+            fail(ConnectionFailed.new(@host))
             close_connection
           end
           @contimeout     = EM::Timer.new(@timeout) do
@@ -147,7 +147,7 @@ module EventMachine
           end
 
           @nonego         = on(:closed) do
-            fail(ConnectionFailed.new(@host))
+            fail(ConnectionTerminated.new(@host))
             close_connection
           end
           on(:version_negotiated) { @nonego.cancel }

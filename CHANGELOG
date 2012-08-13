@@ -1,3 +1,6 @@
+0.4.1
+ - Connections terminated before version negotiation wil fail with EM::Ssh::ConnectionTermianted
+
 0.3.0
  - Provides Shell#expect which can be used to wait for a string, or send a command and then wait
  - Connection errors are provided as Deferreds and don't halt the entire reactor
