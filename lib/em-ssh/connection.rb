@@ -129,12 +129,14 @@ module EventMachine
 
         begin
           on(:connected) do |session|
+            @connected = true
             succeed(session, @host)
           end
           on(:error) do |e|
             fail(e)
             close_connection
           end
+
           @nocon          = on(:closed) do
             fail(SshError.new(@host))
             close_connection
@@ -143,6 +145,12 @@ module EventMachine
             fail(ConnectionTimeout.new(@host))
             close_connection
           end
+
+          @nonego         = on(:closed) do
+            fail(ConnectionFailed.new(@host))
+            close_connection
+          end
+          on(:version_negotiated) { @nonego.cancel }
 
           @error_callback = lambda do |code|
             fail(SshError.new(code))
