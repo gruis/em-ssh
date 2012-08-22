@@ -105,6 +105,12 @@ module EventMachine
         debug("#{self} is unbound")
         fire(:closed)
         @closed = true
+        [@contimeout, @negotimeout, @algotimeout].each do |t|
+          if t
+            t.cancel
+            fail(NegotiationTimeout.new(@host))
+          end
+        end
       end
 
       def receive_data(data)
@@ -116,7 +122,7 @@ module EventMachine
       def connection_completed
         @contimeout.cancel
         @nocon.cancel
-      end # connection_completed
+      end
 
       def initialize(options = {})
         debug("#{self.class}.new(#{options})")
@@ -129,7 +135,7 @@ module EventMachine
 
         begin
           on(:connected) do |session|
-            @connected = true
+            @connected    = true
             succeed(session, @host)
           end
           on(:error) do |e|
@@ -141,9 +147,18 @@ module EventMachine
             fail(ConnectionFailed.new(@host))
             close_connection
           end
+
           @contimeout     = EM::Timer.new(@timeout) do
             fail(ConnectionTimeout.new(@host))
             close_connection
+          end
+
+          @negotimeout = EM::Timer.new(options[:nego_timeout] || @timeout) do
+            fail(NegotiationTimeout.new(@host))
+          end
+
+          @algotimeout = EM::Timer.new(options[:nego_timeout] || @timeout) do
+            fail(NegotiationTimeout.new(@host))
           end
 
           @nonego         = on(:closed) do
@@ -160,12 +175,16 @@ module EventMachine
           @host_key_verifier = select_host_key_verifier(options[:paranoid])
           @server_version    = ServerVersion.new(self)
           on(:version_negotiated) do
+            @negotimeout.cancel
+            @negotimeout = nil
             @data.consume!(@server_version.header.length)
             @algorithms = Net::SSH::Transport::Algorithms.new(self, options)
 
             register_data_handler
 
             on_next(:algo_init) do
+              @algotimeout.cancel
+              @algotimeout = nil
               auth = AuthenticationSession.new(self, options)
               user = options.fetch(:user, user)
               Fiber.new do

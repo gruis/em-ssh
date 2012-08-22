@@ -26,6 +26,8 @@ module EventMachine
     class ConnectionFailed < SshError; end
     class ConnectionTimeout < ConnectionFailed; end
     class ConnectionTerminated < SshError; end
+    # The server failed to negotiate an ssh protocol version
+    class NegotiationTimeout < ConnectionFailed; end
 
 
     class << self
