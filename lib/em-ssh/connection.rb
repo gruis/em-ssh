@@ -105,6 +105,8 @@ module EventMachine
         debug("#{self} is unbound")
         fire(:closed)
         @closed = true
+        @socket = nil
+        @data   = nil
         [@contimeout, @negotimeout, @algotimeout].each do |t|
           if t
             t.cancel

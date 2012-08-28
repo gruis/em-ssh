@@ -1,6 +1,10 @@
 0.4.2
  - Connection accepts :nego_timeout (seconds to wait for protocol and algorithm negotiation to finish)
  - If protocol, or algorithm negotiation fail #errback will be called
+ - Shell#disconnect! forcefully terminates the connection
+ - Shell#disconnect takes a timeout
+ - EM::Ssh::Session#close overrides Net::SSH::Connection::Session to check for
+ transport before trying to close channels
 
 0.4.1
  - Connections terminated before version negotiation wil fail with EM::Ssh::ConnectionTermianted

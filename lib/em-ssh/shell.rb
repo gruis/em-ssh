@@ -93,10 +93,22 @@ module EventMachine
 
       # Close the connection to the server and all child shells.
       # Disconnected shells cannot be split.
-      def disconnect
+      def disconnect(timeout = nil)
+        if timeout
+          EM::Timer.new(timeout) { disconnect! }
+        end
         close
-        session && session.close
+        @session && @session.close
+        disconnect!
       end
+
+      def disconnect!
+        @session = nil
+        if @connection
+          @connection.close_connection
+          @connection = nil
+        end
+      end # disconnect!
 
       # @return [Boolean] true if the session is still alive
       def connected?
@@ -108,7 +120,7 @@ module EventMachine
       # Fires :closed event.
       # @see Callbacks
       def close
-        shell.close.tap{ debug("closing") } if shell.active?
+        shell.close.tap{ debug("closing") } if shell && shell.active?
         @closed = true
         children.each { |c| c.close }
         fire(:closed)
@@ -305,6 +317,7 @@ module EventMachine
       # @see #send_and_wait
       # @param [String] d the data to send encoded as a string
       def send_data(d, send_newline=true)
+        return unless shell
         if send_newline
           shell.send_data("#{d}#{line_terminator}")
         else

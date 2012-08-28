@@ -28,6 +28,13 @@ module EventMachine
         transport.send_message(msg)
       end
 
+      def close
+        # Net::SSH#close doesn't check if the transport is closed
+        channels.clear if transport.closed?
+        channels.each { |id, channel| channel.close }
+        loop { channels.any? && !transport.closed?  }
+        transport.close
+      end
 
     private
 
