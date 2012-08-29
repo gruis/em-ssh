@@ -33,6 +33,7 @@ module EventMachine
         channels.clear if transport.closed?
         channels.each { |id, channel| channel.close }
         loop { channels.any? && !transport.closed?  }
+        transport, @transport = @transport, nil
         transport.close
       end
 

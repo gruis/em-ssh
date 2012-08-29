@@ -90,6 +90,7 @@ module EventMachine
         def cancel
           raise "#{@obj} does not have any callbacks for #{@event.inspect}" unless @obj.respond_to?(:callbacks) && @obj.callbacks.respond_to?(:[]) && @obj.callbacks[@event].respond_to?(:delete)
           @obj.callbacks[@event].delete(self)
+          @obj = nil
           self
         end # cancel
       end # class::Callback

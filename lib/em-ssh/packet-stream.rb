@@ -34,6 +34,11 @@ module EventMachine
         @packet     = nil
       end # initialize(content="")
 
+      def close
+        super? && super
+        @conection = nil
+      end
+
       # Consumes n bytes from the buffer, where n is the current position
       # unless otherwise specified. This is useful for removing data from the
       # buffer that has previously been read, when you are expecting more data

@@ -105,14 +105,29 @@ module EventMachine
         debug("#{self} is unbound")
         fire(:closed)
         @closed = true
+        @socket && @socket.close
         @socket = nil
         @data   = nil
-        [@contimeout, @negotimeout, @algotimeout].each do |t|
-          if t
+        @error_callback = nil
+        # TODO clear algorithms, session, and packet-streams
+
+        failed_timeout = [@contimeout, @negotimeout, @algotimeout].find { |t| t }
+        instance_variables.each do |iv|
+          if (t = instance_variable_get(iv)) && (t.is_a?(EM::Timer) || t.is_a?(EM::PeriodicTimer))
             t.cancel
-            fail(NegotiationTimeout.new(@host))
+            instance_variable_set(iv, nil)
           end
         end
+
+        if @algorithms
+          @algorithms.instance_variable_set(:@session, nil)
+          @algorithms = nil
+        end
+
+        callbacks.values.flatten.each(&:cancel)
+        callbacks.clear
+
+        fail(NegotiationTimeout.new(@host)) if failed_timeout
       end
 
       def receive_data(data)
