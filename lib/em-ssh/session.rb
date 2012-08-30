@@ -4,22 +4,7 @@ module EventMachine
       include Log
 
       def initialize(transport, options={})
-        # I don't like overriding #initialize, but we need to keep a
-        # reference to the anonymous nil channel so that we can later
-        # properly close it.
-        self.logger = transport.logger
-
-        @transport = transport
-        @options = options
-
-        @channel_id_counter = -1
-        @channels = Hash.new(@anon_nil_channel = NilChannel.new(self))
-        $stderr.puts @channels.values.map{|c| c.class }
-        @listeners = { transport.socket => nil }
-        @pending_requests = []
-        @channel_open_handlers = {}
-        @on_global_request = {}
-        @properties = (options[:properties] || {}).dup
+        super(transport, options)
         register_callbacks
       end
 
@@ -47,8 +32,10 @@ module EventMachine
       # EM::Ssh::Connections and EM::Ssh::Sessions. Also directly close local channels
       # if the connection is already closed.
       def close
-        @anon_nil_channel.instance_variable_set(:@session, nil)
-        remove_instance_variable(:@anon_nil_channel)
+        if @chan_timer
+          @chan_timer.cancel
+          remove_instance_variable(:@chan_timer)
+        end
 
         # Net::SSH::Connection::Session#close doesn't check if the transport is
         # closed. If it is then calling Channel#close will will not close the
@@ -65,7 +52,6 @@ module EventMachine
         # remove the reference to the connection to facilitate Garbage Collection
         transport, @transport = @transport, nil
         @listeners.clear
-        remove_instance_variable(:@logger)
         transport.close
       end
 
@@ -81,7 +67,7 @@ module EventMachine
           send(MAP[packet.type], packet)
         end #  |packet|
 
-        chan_timer = EM.add_periodic_timer(0.01) do
+        @chan_timer = EM.add_periodic_timer(0.01) do
           # we need to check the channel for any data to send and tell it to process any input
           # at some point we should override Channel#enqueue_pending_output, etc.,.
           channels.each { |id, channel| channel.process unless channel.closing? }

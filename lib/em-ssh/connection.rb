@@ -100,7 +100,6 @@ module EventMachine
         @data         = @socket.input
       end # post_init
 
-      # @return
       def unbind
         debug("#{self} is unbound")
         fire(:closed)
@@ -109,7 +108,6 @@ module EventMachine
         @socket = nil
         @data   = nil
         @error_callback = nil
-        # TODO clear algorithms, session, and packet-streams
 
         failed_timeout = [@contimeout, @negotimeout, @algotimeout].find { |t| t }
         instance_variables.each do |iv|
