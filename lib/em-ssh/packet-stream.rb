@@ -35,8 +35,9 @@ module EventMachine
       end # initialize(content="")
 
       def close
-        super? && super
-        @conection = nil
+        # remove reference to the connection to facilitate Garbage Collection
+        return super.tap { @connection = nil } if respond_to?(:super)
+        @connection = nil
       end
 
       # Consumes n bytes from the buffer, where n is the current position

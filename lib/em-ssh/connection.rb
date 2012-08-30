@@ -126,6 +126,9 @@ module EventMachine
 
         callbacks.values.flatten.each(&:cancel)
         callbacks.clear
+        instance_variables.select{|iv| (t = instance_variable_get(iv)) && t.is_a?(EM::Ssh::Callbacks::Callback) }.each do |iv|
+          instance_variable_set(iv, nil)
+        end
 
         fail(NegotiationTimeout.new(@host)) if failed_timeout
       end

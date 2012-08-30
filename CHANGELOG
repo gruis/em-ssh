@@ -5,6 +5,8 @@
  - Shell#disconnect takes a timeout
  - EM::Ssh::Session#close overrides Net::SSH::Connection::Session to check for
  transport before trying to close channels
+ - Fixes: dangling references to EM::Timers are removed from EM::Ssh::Connection
+ - Fixes: various dangling references to EM::Ssh::Connection and EM::Ssh::Session are properly removed
 
 0.4.1
  - Connections terminated before version negotiation wil fail with EM::Ssh::ConnectionTermianted
