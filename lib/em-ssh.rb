@@ -81,3 +81,5 @@ require 'em-ssh/server-version'
 require 'em-ssh/packet-stream'
 require 'em-ssh/authentication-session'
 require 'em-ssh/session'
+# load our evil monkey patch
+require 'em-ssh/ext/net/ssh/connection/channel'

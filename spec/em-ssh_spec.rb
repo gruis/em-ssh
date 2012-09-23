@@ -30,4 +30,21 @@ describe "EM::Ssh" do
       }
     }.to raise_error(EM::ConnectionError)
   end # should raise a ConnectionFailed when the address is invalid
+
+  it "should run exec! succesfully" do
+    res = ""
+    EM.run {
+      EM::Ssh.start('icaleb.org', 'calebcrane') do |con|
+        con.errback do |err|
+          raise err
+        end
+        con.callback do |ssh|
+          res = ssh.exec!("uname -a")
+          ssh.close
+          EM.stop
+        end
+      end
+    }
+    res.should == "Linux icaleb 2.6.18-194.3.1.el5 #1 SMP Thu May 13 13:08:30 EDT 2010 x86_64 x86_64 x86_64 GNU/Linux\n"
+  end
 end # EM::Ssh
