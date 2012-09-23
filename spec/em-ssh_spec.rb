@@ -45,6 +45,6 @@ describe "EM::Ssh" do
         end
       end
     }
-    res.should == "Linux icaleb 2.6.18-194.3.1.el5 #1 SMP Thu May 13 13:08:30 EDT 2010 x86_64 x86_64 x86_64 GNU/Linux\n"
+    res.should include("Linux icaleb")
   end
 end # EM::Ssh
