@@ -1,4 +1,5 @@
 require 'em-ssh'
+require 'em-ssh/connection/channel/interactive'
 
 module EventMachine
   class Ssh
@@ -50,12 +51,17 @@ module EventMachine
       attr_reader :children
       # @return [Shell] the parent of this shell
       attr_reader :parent
+
       # @return [String] a string (\r\n) to append to every command
       def line_terminator
-        @line_terminator ||= "\n"
+        shell ? shell.line_terminator : "\n"
       end
-      # [String]
-      attr_writer :line_terminator
+
+      # @param[String] lt a string (\r\n) to append to every command
+      def line_terminator=(lt)
+        @line_terminator = lt
+        shell.line_terminator = lt if shell
+      end
 
       # Connect to an ssh server then start a user shell.
       # @param [String] address
@@ -76,7 +82,6 @@ module EventMachine
         @parent          = opts[:parent]
         @children        = []
         @reconnect       = opts[:reconnect]
-        @buffer          = ''
 
         # TODO make all methods other than #callback and #errback inaccessible until connected? == true
         yield self if block_given?
@@ -131,109 +136,6 @@ module EventMachine
         @closed == true
       end
 
-      # Wait for a number of seconds until a specified string or regexp is matched by the
-      # data returned from the ssh connection. Optionally send a given string first.
-      #
-      # If a block is not provided the current Fiber will yield until strregex matches or
-      # :timeout # is reached.
-      #
-      # If a block is provided expect will return.
-      #
-      # @param [String, Regexp] strregex to match against
-      # @param [String] send_str the data to send before waiting
-      # @param [Hash] opts
-      # @option opts [Fixnum] :timeout (@timeout) number of seconds to wait when there is no activity
-      # @return [Shell, String] all data received up to an including strregex if a block is not provided.
-      #                         the Shell if a block is provided
-      # @example expect a prompt
-      #   expect(' ~]$ ')
-      # @example send a command and wait for a prompt
-      #   expect(' ~]$ ', '/sbin/ifconfig')
-      # @example expect a prompt and within 5 seconds
-      #   expect(' ~]$ ', :timeout => 5)
-      # @example send a command and wait up to 10 seconds for a prompt
-      #   expect(' ~]$ ', '/etc/sysconfig/openvpn restart', :timeout => 10)
-      def expect(strregex, send_str = nil, opts = {})
-        send_str, opts = nil, send_str if send_str.is_a?(Hash)
-        if block_given?
-          Fiber.new {
-            yield send_str ? send_and_wait(send_str, strregex, opts) : wait_for(strregex, opts)
-          }.resume
-          self
-        else
-          send_str ? send_and_wait(send_str, strregex, opts) : wait_for(strregex, opts)
-        end
-      end
-
-      # Send a string to the server and wait for a response containing a specified String or Regex.
-      # @param [String] send_str
-      # @return [String] all data in the buffer including the wait_str if it was found
-      def send_and_wait(send_str, wait_str = nil, opts = {})
-        reconnect? ? open : raise(Disconnected) if !connected?
-        raise ClosedChannel if closed?
-        debug("send_and_wait(#{send_str.inspect}, #{wait_str.inspect}, #{opts})")
-        send_data(send_str)
-        return wait_for(wait_str, opts)
-      end
-
-      # Wait for the shell to send data containing the given string.
-      # @param [String, Regexp] strregex a string or regex to match the console output against.
-      # @param [Hash] opts
-      # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
-      # @return [String] the contents of the buffer or a TimeoutError
-      # @raise Disconnected
-      # @raise ClosedChannel
-      # @raise TimeoutError
-      def wait_for(strregex, opts = { })
-        reconnect? ? open : raise(Disconnected) unless connected?
-        raise ClosedChannel if closed?
-        debug("wait_for(#{strregex.inspect}, #{opts})")
-        opts          = { :timeout => @timeout }.merge(opts)
-        found         = nil
-        f             = Fiber.current
-        trace         = caller
-        timer         = nil
-        data_callback = nil
-        matched       = false
-        started       = Time.new
-
-        timeout = proc do
-          data_callback && data_callback.cancel
-          f.resume(TimeoutError.new("#{host}: inactivity timeout (#{opts[:timeout]}) while waiting for #{strregex.inspect}; received: #{@buffer.inspect}; waited total: #{Time.new - started}"))
-        end
-
-        data_callback = on(:data) do
-          timer && timer.cancel
-          if matched
-            warn("data_callback invoked when already matched")
-            next
-          end
-          if (matched = @buffer.match(strregex))
-            data_callback.cancel
-            @buffer=matched.post_match
-            f.resume(matched.pre_match + matched.to_s)
-          else
-            timer = EM::Timer.new(opts[:timeout], &timeout)
-          end
-        end
-
-        # Check against current buffer
-        EM::next_tick {
-          data_callback.call() if @buffer.length>0
-        }
-
-        timer = EM::Timer.new(opts[:timeout], &timeout)
-        debug("set timer: #{timer} for #{opts[:timeout]}")
-        Fiber.yield.tap do |res|
-          if res.is_a?(Exception)
-            res.set_backtrace(Array(res.backtrace) + trace)
-            raise res
-          end
-          yield(res) if block_given?
-        end
-      end
-
-
       # Open a shell on the server.
       # You generally don't need to call this.
       # @return [self, Exception]
@@ -254,12 +156,12 @@ module EventMachine
                 else
                   debug "***** shell open: #{shell}"
                   @closed = false
+                  ###
                   @shell  = shell
-                  @shell.on_data do |ch,data|
-                    @buffer += data
-                    debug("data: #{@buffer.dump}")
-                    fire(:data, data)
-                  end
+                  shell.extend(EventMachine::Ssh::Connection::Channel::Interactive)
+                  shell.line_terminator = @line_terminator if @line_terminator
+                  shell.on(:data) { |data| debug("#{shell.dump_buffers}") }
+                  ###
                   Fiber.new { yield(self) if block_given? }.resume
                   f.resume(self)
                 end
@@ -311,20 +213,73 @@ module EventMachine
         return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
       end
 
+      # Ensure the channel is open of fail.
+      def assert_channel!
+        reconnect? ? open : raise(Disconnected) unless connected?
+        raise ClosedChannel if closed?
+      end
+      private :assert_channel!
+
+      # Wait for a number of seconds until a specified string or regexp is matched by the
+      # data returned from the ssh connection. Optionally send a given string first.
+      #
+      # If a block is not provided the current Fiber will yield until strregex matches or
+      # :timeout # is reached.
+      #
+      # If a block is provided expect will return.
+      #
+      # @param [String, Regexp] strregex to match against
+      # @param [String] send_str the data to send before waiting
+      # @param [Hash] opts
+      # @option opts [Fixnum] :timeout (@timeout) number of seconds to wait when there is no activity
+      # @return [Shell, String] all data received up to an including strregex if a block is not provided.
+      #                         the Shell if a block is provided
+      # @example expect a prompt
+      #   expect(' ~]$ ')
+      # @example send a command and wait for a prompt
+      #   expect(' ~]$ ', '/sbin/ifconfig')
+      # @example expect a prompt and within 5 seconds
+      #   expect(' ~]$ ', :timeout => 5)
+      # @example send a command and wait up to 10 seconds for a prompt
+      #   expect(' ~]$ ', '/etc/sysconfig/openvpn restart', :timeout => 10)
+      def expect(strregex, send_str = nil, opts = {})
+        assert_channel!
+        shell.expect(strregex,
+                     send_str,
+                     {:timeout => @timeout, :log => self }.merge(opts))
+      end
+
+      # Send a string to the server and wait for a response containing a specified String or Regex.
+      # @param [String] send_str
+      # @return [String] all data in the buffer including the wait_str if it was found
+      def send_and_wait(send_str, wait_str = nil, opts = {})
+        assert_channel!
+        shell.send_and_wait(send_str,
+                            wait_str,
+                            {:timeout => @timeout, :log => self }.merge(opts))
+      end
 
       # Send data to the ssh server shell.
       # You generally don't need to call this.
       # @see #send_and_wait
       # @param [String] d the data to send encoded as a string
       def send_data(d, send_newline=true)
-        return unless shell
-        if send_newline
-          shell.send_data("#{d}#{line_terminator}")
-        else
-          shell.send_data("#{d}")
-        end
+        assert_channel!
+        shell.send_data(d, send_newline)
       end
 
+      # Wait for the shell to send data containing the given string.
+      # @param [String, Regexp] strregex a string or regex to match the console output against.
+      # @param [Hash] opts
+      # @option opts [Fixnum] :timeout (Session::TIMEOUT) the maximum number of seconds to wait
+      # @return [String] the contents of the buffer or a TimeoutError
+      # @raise Disconnected
+      # @raise ClosedChannel
+      # @raise TimeoutError
+      def wait_for(strregex, opts = { })
+        assert_channel!
+        shell.wait_for(strregex, {:timeout => @timeout, :log => self }.merge(opts))
+      end
 
       def debug(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
@@ -345,7 +300,6 @@ module EventMachine
       def error(msg = nil, &blk)
         super("#{host} #{msg}", &blk)
       end
-
 
     private
     # TODO move private stuff down to private
