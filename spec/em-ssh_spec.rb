@@ -3,7 +3,12 @@ require 'bundler/setup'
 require 'em-ssh'
 require 'rspec'
 
+require_relative 'constants'
+
 describe "EM::Ssh" do
+  ###
+  include EM::Ssh::Test::Constants
+  ###
   it "should be addressable through EM::P and EM::Protocols" do
     EM::P.const_defined?(:Ssh).should be true
     EM::Protocols.const_defined?(:Ssh).should be true
@@ -13,7 +18,7 @@ describe "EM::Ssh" do
   it "should raise a ConnectionTimeout error when a connection can't be established before the given timeout" do
     expect {
       EM.run {
-        EM::Ssh.start('192.168.92.11', 'caleb', :timeout => 1) do |ssh|
+        EM::Ssh.start(REMOTE1.ip, REMOTE1.username, :timeout => 1) do |ssh|
           ssh.callback { EM.stop }
           ssh.errback{|e| raise e }
         end
@@ -23,7 +28,7 @@ describe "EM::Ssh" do
   it "should raise a ConnectionError when the address is invalid" do
     expect {
       EM.run {
-        EM::Ssh.start('0.0.0.1', 'caleb') do |ssh|
+        EM::Ssh.start('0.0.0.1', 'caleb') do |ssh| # 0.0.0.1 is an invalid address
           ssh.callback { EM.stop }
           ssh.errback { |e| raise(e) }
         end
@@ -34,7 +39,7 @@ describe "EM::Ssh" do
   it "should run exec! succesfully" do
     res = ""
     EM.run {
-      EM::Ssh.start('icaleb.org', 'calebcrane') do |con|
+      EM::Ssh.start(REMOTE2.url, REMOTE2.username) do |con|
         con.errback do |err|
           raise err
         end
@@ -45,6 +50,6 @@ describe "EM::Ssh" do
         end
       end
     }
-    res.should == "Linux icaleb 2.6.18-194.3.1.el5 #1 SMP Thu May 13 13:08:30 EDT 2010 x86_64 x86_64 x86_64 GNU/Linux\n"
+    res.should == REMOTE2.uname_a
   end
 end # EM::Ssh
