@@ -76,7 +76,7 @@ EM.run do
       shell.expect('~]$ ', '/sbin/ifconfig -a')
       EM.stop
     end
-    shell.errback do
+    shell.errback do |err|
       puts "error: #{err} (#{err.class})" 
       EM.stop
     end
