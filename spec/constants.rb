@@ -12,8 +12,9 @@ module EM
         # said constants were declared (via #add_field(constant_name, default_hardcoded_value).
         class EnvElseHardcoded
 
-          def initialize(header)
+          def initialize(header, target)
             @header = header
+            @target = target
           end
 
           # Sets an accessor for 'name', sets its value as the one from ENV["#@header#{name}".upcase],
@@ -33,19 +34,21 @@ module EM
           #   DEVICE2.add_field(:ahahah, '2') { |i| i.to_i } # this works_too
           #    # also note that the default hardcoded value defaults to ''.
           def add_field(name, default='', &blk)
-            value = ENV["#@header#{name}".upcase] || default
+            const_name = "#{@header}#{name}".upcase
+            value = ENV[const_name] || ENV["#@header#{name}".upcase] || default
             class << self; self; end.instance_eval { attr_accessor name }
             send("#{name}=", blk ? blk.call(value) : value)
+            @target.const_set(const_name, value)
           end
         end
 
         ### remote server 1
-        REMOTE1 = EnvElseHardcoded.new("REMOTE1_")
+        REMOTE1 = EnvElseHardcoded.new("REMOTE1_", self)
         REMOTE1.add_field(:ip, '192.168.92.11')
         REMOTE1.add_field(:username, 'caleb')
         REMOTE1.add_field(:prompt)
         ### remote server 2
-        REMOTE2 = EnvElseHardcoded.new("REMOTE2_")
+        REMOTE2 = EnvElseHardcoded.new("REMOTE2_", self)
         REMOTE2.add_field(:url, 'icaleb.org')
         REMOTE2.add_field(:username, 'calebcrane')
         REMOTE2.add_field(:prompt, ']$')

@@ -15,7 +15,7 @@ module EM::Ssh::Test
     it "should raise a ConnectionTimeout error when a connection can't be established before the given timeout" do
       expect {
         EM.run {
-          EM::Ssh.start(REMOTE1.ip, REMOTE1.username, :timeout => 1) do |ssh|
+          EM::Ssh.start(REMOTE1_IP, REMOTE1_USERNAME, :timeout => 1) do |ssh|
             ssh.callback { EM.stop }
             ssh.errback{|e| raise e }
           end
@@ -36,7 +36,7 @@ module EM::Ssh::Test
     it "should run exec! succesfully" do
       res = ""
       EM.run {
-        EM::Ssh.start(REMOTE2.url, REMOTE2.username) do |con|
+        EM::Ssh.start(REMOTE2_URL, REMOTE2_USERNAME) do |con|
           con.errback do |err|
             raise err
           end
@@ -47,7 +47,7 @@ module EM::Ssh::Test
           end
         end
       }
-      res.should == REMOTE2.uname_a
+      res.should == REMOTE2_UNAME_A
     end
   end # EM::Ssh
 end # module::EM::Ssh::Test
