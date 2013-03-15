@@ -57,4 +57,3 @@ module EM
     end # module Test
   end # module Ssh
 end # module EM
-
