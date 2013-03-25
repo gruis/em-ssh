@@ -3,7 +3,7 @@ module EventMachine
     module Log
       # @return [Logger] the default logger
       def log
-        EventMachine::Ssh.logger
+        @logger || EventMachine::Ssh.logger
       end
 
       def debug(msg = nil, &blk)

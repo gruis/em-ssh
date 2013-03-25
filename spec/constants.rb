@@ -52,7 +52,7 @@ module EM
         REMOTE2.add_field(:url, 'icaleb.org')
         REMOTE2.add_field(:username, 'calebcrane')
         REMOTE2.add_field(:prompt, ']$')
-        REMOTE2.add_field(:timeout, 2, &:to_i)
+        REMOTE2.add_field(:timeout, 5, &:to_i)
         REMOTE2.add_field(:uname_a, "Linux icaleb 2.6.18-194.3.1.el5 #1 SMP Thu May 13 13:08:30 EDT 2010 x86_64 x86_64 x86_64 GNU/Linux\n")
 
       end # module Constants
