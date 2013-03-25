@@ -1,6 +1,7 @@
 0.5.0
  - Shell an Connection instances can have their own Loggers 
- - Target devices and options for specs can be configured through environment variables [@freakhill](https://github.com/freakhill)
+ - [#18](https://github.com/simulacre/em-ssh/pull/18) - Target devices and options for specs can be configured through environment variables [@freakhill](https://github.com/freakhill)
+ - [#19](https://github.com/simulacre/em-ssh/pull/19) - Decouple interactive behavior from Shell allowing for other channels to be extended with #expect, etc., [@freakhill](https://github.com/freakhill)
   
 0.4.2
  - Connection accepts :nego_timeout (seconds to wait for protocol and algorithm negotiation to finish)
