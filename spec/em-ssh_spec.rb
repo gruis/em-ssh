@@ -30,7 +30,7 @@ module EM::Ssh::Test
             ssh.errback { |e| raise(e) }
           end
         }
-      }.to raise_error(EM::ConnectionError)
+      }.to raise_error(EM::Ssh::ConnectionFailed)
     end # should raise a ConnectionFailed when the address is invalid
 
     it "should run exec! succesfully" do

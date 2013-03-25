@@ -36,7 +36,7 @@ module EventMachine
           # In other cases (include, prepend?), you need to call this method manually before use of the channel.
           def init_interactive_module
             @buffer = ''
-            line_terminator = "\n"
+            @line_terminator = "\n"
             on_data do |ch, data|
               @buffer += data
               fire(:data, data)
@@ -98,7 +98,7 @@ module EventMachine
           # @param [Boolean] send_newline appends a newline terminator to the data (defaults: false).
           def send_data(d, send_newline=false)
             if send_newline
-              super("#{d}#{line_terminator}")
+              super("#{d}#{@line_terminator}")
             else
               super("#{d}")
             end
@@ -117,7 +117,7 @@ module EventMachine
             log = opts[:log] || NullLogger.new
             timeout = opts[:timeout].is_a?(Fixnum) ? opts[:timeout] : DEFAULT_TIMEOUT
             ###
-            log.debug("wait_for(#{strregex.inspect}, #{opts})")
+            log.debug("wait_for(#{strregex.inspect}, :timeout => #{opts[:timeout] || @timeout})")
             opts          = { :timeout => @timeout }.merge(opts)
             found         = nil
             f             = Fiber.current
@@ -139,8 +139,9 @@ module EventMachine
                 next
               end
               if (matched = buffer.match(strregex))
+                log.debug("matched #{strregex.inspect} on #{buffer.inspect}")
                 data_callback.cancel
-                buffer=matched.post_match
+                @buffer = matched.post_match
                 f.resume(matched.pre_match + matched.to_s)
               else
                 timer = EM::Timer.new(opts[:timeout], &timeout)
@@ -151,7 +152,6 @@ module EventMachine
             EM::next_tick { data_callback.call() if buffer.length > 0 }
 
             timer = EM::Timer.new(opts[:timeout], &timeout)
-            log.debug("set timer: #{timer} for #{opts[:timeout]}")
             Fiber.yield.tap do |res|
               if res.is_a?(Exception)
                 res.set_backtrace(Array(res.backtrace) + trace)

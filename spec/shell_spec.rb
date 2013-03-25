@@ -11,11 +11,11 @@ module EM::Ssh::Test
       EM.run {
         Fiber.new {
           timer = EM::Timer.new(REMOTE2_TIMEOUT) { raise "failed #{$0}" }
-          shell = EM::Ssh::Shell.new(REMOTE2_URL, REMOTE2_USERNAME, "")
+          shell = EM::Ssh::Shell.new(REMOTE2_URL, REMOTE2_USERNAME, "", :logger => ::Logger.new(STDERR).tap{|l| l.level = ::Logger::DEBUG})
           shell.callback do
             shell.should be_a(EventMachine::Ssh::Shell)
             shell.wait_for(Regexp.escape(REMOTE2_PROMPT))
-            shell.send_and_wait('uname -a', Regexp.escape(REMOTE2_PROMPT)).should include("GNU/Linux")
+            shell.send_and_wait("uname -a", Regexp.escape(REMOTE2_PROMPT)).should include("GNU/Linux")
             timer.cancel
             EM.stop
           end
