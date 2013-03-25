@@ -14,7 +14,7 @@ module EM::Ssh::Test
           shell = EM::Ssh::Shell.new(REMOTE2_URL, REMOTE2_USERNAME, "")
           shell.callback do
             shell.should be_a(EventMachine::Ssh::Shell)
-            shell.wait_for(Regexp.escape(REMOTE2_PROMPT))
+            shell.expect(Regexp.escape(REMOTE2_PROMPT))
             shell.send_and_wait("uname -a", Regexp.escape(REMOTE2_PROMPT)).should include("GNU/Linux")
             timer.cancel
             EM.stop

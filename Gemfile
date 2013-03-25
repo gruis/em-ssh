@@ -1,6 +1,7 @@
 source "http://rubygems.org"
 
 gem "em-ssh", :path => File.expand_path("../", __FILE__)
+gem "pry"
 gemspec
 
 group :development do

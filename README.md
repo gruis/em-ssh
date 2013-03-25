@@ -70,14 +70,13 @@ require 'em-ssh/shell'
 EM.run do
   EM::Ssh::Shell.new(host, ENV['USER'], "") do |shell|
     shell.callback do
-      shell.expect('~]$ ')
-      shell.expect('~]$ ','uname -a')
-      shell.expect('~]$ ')
-      shell.expect('~]$ ', '/sbin/ifconfig -a')
+      shell.expect(Regexp.escape('~]$ '))
+      $stderr.puts shell.expect(Regexp.escape('~]$ '),'uname -a')
+      $stderr.puts shell.expect(Regexp.escape('~]$ '), '/sbin/ifconfig -a')
       EM.stop
     end
     shell.errback do |err|
-      puts "error: #{err} (#{err.class})" 
+      puts "error: #{err} (#{err.class})"
       EM.stop
     end
   end
@@ -88,34 +87,90 @@ end
 
 ```ruby
 require 'em-ssh/shell'
+
+waitstr = Regexp.escape('~]$ ')
+commands = ["uname -a", "uptime", "ifconfig"]
 EM.run do
-  EM::Ssh::Shell.new(host, ENV['USER'], '') do |shell|
+  EM::Ssh::Shell.new(host, user, "") do |shell|
     shell.errback do |err|
       puts "error: #{err} (#{err.class})"
       EM.stop
-    end 
+    end
 
-    shell.callback do 
+    shell.callback do
       commands.clone.each do |command|
         mys = shell.split # provides a second session over the same connection
+
         mys.on(:closed) do
           commands.delete(command)
           EM.stop if commands.empty?
         end
 
-        puts("waiting for: #{waitstr.inspect}")
-        # When given a block, Shell#expect does not 'block'
-        mys.expect(waitstr) do 
-          puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
-          mys.expect(waitstr, command) do |result|
-            puts "#{mys} result: '#{result}'"
-            mys.close
-          end 
-        end 
-      end 
-    end 
-  end 
-end 
+        mys.callback do
+          puts("waiting for: #{waitstr.inspect}")
+          # When given a block, Shell#expect does not 'block'
+          mys.expect(waitstr) do
+            puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
+            mys.expect(waitstr, command) do |result|
+              puts "#{mys} result: '#{result}'"
+              mys.close
+            end
+          end
+        end
+
+        mys.errback do |err|
+          puts "subshell error: #{err} (#{err.class})"
+          mys.close
+        end
+
+      end
+    end
+  end
+end
+```
+
+
+```ruby
+waitstr  = Regexp.escape('~]$ ')
+commands = ["uname -a", "uptime", "ifconfig"]
+
+require 'em-ssh/shell'
+EM.run do
+  EM::Ssh::Shell.new(host, user, "") do |shell|
+    shell.errback do |err|
+      puts "error: #{err} (#{err.class})"
+      puts err.backtrace
+      EM.stop
+    end
+
+    shell.callback do
+      commands.clone.each do |command|
+        Fiber.new {
+          # When given a block Shell#split will close the Shell after
+          # the block returns. If a block is given it must be called 
+          # within a Fiber.
+          sresult = shell.split do |mys|
+            mys.on(:closed) do
+              commands.delete(command)
+              EM.stop if commands.empty?
+            end
+            mys.errback do |err|
+              puts "subshell error: #{err} (#{err.class})"
+              mys.close
+            end
+
+              mys.expect(waitstr)
+              result = mys.expect(waitstr, command)
+              puts "#{mys} result: '#{result.inspect}'"
+              result
+          end
+          puts "split result: #{sresult.inspect} +++"
+        }.resume
+
+      end
+    end
+  end
+end
 ```
 
 ## Other Examples

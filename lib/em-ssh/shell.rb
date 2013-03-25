@@ -105,6 +105,7 @@ module EventMachine
         end
         close
         @session && @session.close
+        @shell = nil
         disconnect!
       end
 
@@ -120,6 +121,7 @@ module EventMachine
       def connected?
         session && !session.closed?
       end
+
 
       # Close this shell and all children.
       # Even when a shell is closed it is still connected to the server.
@@ -137,14 +139,31 @@ module EventMachine
         @closed == true
       end
 
+
+      # @return [Boolean] Is the shell open?
+      def open?
+        !closed? && @shell
+      end
+
       # Open a shell on the server.
       # You generally don't need to call this.
       # @return [self, Exception]
       def open(&blk)
-        debug("open(#{blk})")
-        f      = Fiber.current
-        trace  = caller
+        f       = Fiber.current
+        trace   = caller
+        on_open do |s|
+          Fiber.new { yield(self) if block_given? }.resume
+          f.resume(self)
+        end
+        open!
+        return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
+      end
 
+      private
+
+      def open!
+        return if @opening
+        @opening = true
         begin
           connect
           session.open_channel do |channel|
@@ -153,32 +172,56 @@ module EventMachine
               debug "***** pty open: #{pty}; suc: #{suc}"
               pty.send_channel_request("shell") do |shell,success|
                 if !success
-                  f.resume(ConnectionError.new("Failed to create shell").tap{|e| e.set_backtrace(caller) })
+                  set_open_status(ConnectionError.new("Failed to create shell").tap{|e| e.set_backtrace(caller) })
                 else
                   debug "***** shell open: #{shell}"
                   @closed = false
-                  ###
                   @shell  = shell
                   shell.extend(EventMachine::Ssh::Connection::Channel::Interactive)
                   shell.line_terminator = @line_terminator if @line_terminator
                   shell.on(:data) { |data| debug("#{shell.dump_buffers}") }
-                  ###
-                  Fiber.new { yield(self) if block_given? }.resume
-                  f.resume(self)
+                  set_open_status(self)
                 end
+                @opening     = false
               end # |shell,success|
             end # |pty,suc|
           end # |channel|
         rescue => e
+          @opening = false
           raise ConnectionError.new("failed to create shell for #{host}: #{e} (#{e.class})")
         end
-
-        return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
       end
 
-      # Create a new shell using the same ssh connection.
-      # A connection will be established if this shell is not connected.
-      # If a block is provided the child will be closed after yielding.
+      def on_open(&cb)
+        if open?
+          EM.next_tick { cb.call(@open_status) }
+        else
+          open_callbacks << cb
+        end
+      end
+
+      def open_callbacks
+        @open_callbacks ||= []
+      end
+
+      def set_open_status(status)
+        @open_status = status
+        open_callbacks.clone.each do |cb|
+          open_callbacks.delete(cb)
+          cb.call(status)
+        end
+        @open_status
+      end
+
+      public
+
+      # Create a new shell using the same ssh connection. A connection will be
+      # established if this shell is not connected.
+      #
+      # If a block is provided the call to split must be inside of a Fiber. The
+      # child will be closed after yielding. The block will not be yielded
+      # until the remote PTY has been opened.
+      #
       # @yield [Shell] child
       # @return [Shell] child
       def split
@@ -191,7 +234,13 @@ module EventMachine
           fire(:childless).tap{ info("fired :childless") } if children.empty?
         end
         fire(:split, child)
-        block_given? ? yield(child).tap { child.close } : child
+        if block_given?
+          # requires that the caller be in a Fiber
+          child.open rescue child.fail($!)
+          yield(child).tap { child.close }
+        else
+          child
+        end
       end
 
       # Connect to the server.
@@ -204,11 +253,11 @@ module EventMachine
         ::EM::Ssh.start(host, user, connect_opts) do |connection|
           @connection = connection
           connection.callback do |ssh|
-            f.resume(@session = ssh)
+            f.resume(@session = ssh) if f.alive?
           end
           connection.errback do |e|
             e.set_backtrace(trace + Array(e.backtrace))
-            f.resume(e)
+            f.resume(e) if f.alive?
           end
         end
         return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
@@ -216,7 +265,7 @@ module EventMachine
 
       # Ensure the channel is open of fail.
       def assert_channel!
-        reconnect? ? open : raise(Disconnected) unless connected?
+        reconnect? ? open : raise(Disconnected) unless connected? && @shell
         raise ClosedChannel if closed?
       end
       private :assert_channel!
@@ -227,7 +276,7 @@ module EventMachine
       # If a block is not provided the current Fiber will yield until strregex matches or
       # :timeout # is reached.
       #
-      # If a block is provided expect will return.
+      # If a block is provided expect will return immediately.
       #
       # @param [String, Regexp] strregex to match against
       # @param [String] send_str the data to send before waiting
@@ -243,11 +292,12 @@ module EventMachine
       #   expect(' ~]$ ', :timeout => 5)
       # @example send a command and wait up to 10 seconds for a prompt
       #   expect(' ~]$ ', '/etc/sysconfig/openvpn restart', :timeout => 10)
-      def expect(strregex, send_str = nil, opts = {})
+      def expect(strregex, send_str = nil, opts = {}, &blk)
         assert_channel!
         shell.expect(strregex,
                      send_str,
-                     {:timeout => @timeout, :log => self }.merge(opts))
+                     {:timeout => @timeout, :log => self }.merge(opts),
+                    &blk)
       end
 
       # Send a string to the server and wait for a response containing a specified String or Regex.
