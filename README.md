@@ -8,10 +8,12 @@ Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.c
 ##Synopsis
 
 ```ruby
+require "em-ssh"
 EM.run do
   EM::Ssh.start(host, user, :password => password) do |connection|
     connection.errback do |err|
       $stderr.puts "#{err} (#{err.class})"
+      EM.stop
     end
     connection.callback do |ssh|
       # capture all stderr and stdout output from a remote process
@@ -76,7 +78,7 @@ EM.run do
       EM.stop
     end
     shell.errback do |err|
-      puts "error: #{err} (#{err.class})"
+      $stderr.puts "error: #{err} (#{err.class})"
       EM.stop
     end
   end
@@ -93,7 +95,7 @@ commands = ["uname -a", "uptime", "ifconfig"]
 EM.run do
   EM::Ssh::Shell.new(host, user, "") do |shell|
     shell.errback do |err|
-      puts "error: #{err} (#{err.class})"
+      $stderr.puts "error: #{err} (#{err.class})"
       EM.stop
     end
 
@@ -107,19 +109,19 @@ EM.run do
         end
 
         mys.callback do
-          puts("waiting for: #{waitstr.inspect}")
+          $stderr.puts("waiting for: #{waitstr.inspect}")
           # When given a block, Shell#expect does not 'block'
           mys.expect(waitstr) do
-            puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
+            $stderr.puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
             mys.expect(waitstr, command) do |result|
-              puts "#{mys} result: '#{result}'"
+              $stderr.puts "#{mys} result: '#{result}'"
               mys.close
             end
           end
         end
 
         mys.errback do |err|
-          puts "subshell error: #{err} (#{err.class})"
+          $stderr.puts "subshell error: #{err} (#{err.class})"
           mys.close
         end
 
@@ -138,8 +140,8 @@ require 'em-ssh/shell'
 EM.run do
   EM::Ssh::Shell.new(host, user, "") do |shell|
     shell.errback do |err|
-      puts "error: #{err} (#{err.class})"
-      puts err.backtrace
+      $stderr.puts "error: #{err} (#{err.class})"
+      $stderr.puts err.backtrace
       EM.stop
     end
 
@@ -155,16 +157,16 @@ EM.run do
               EM.stop if commands.empty?
             end
             mys.errback do |err|
-              puts "subshell error: #{err} (#{err.class})"
+              $stderr.puts "subshell error: #{err} (#{err.class})"
               mys.close
             end
 
               mys.expect(waitstr)
               result = mys.expect(waitstr, command)
-              puts "#{mys} result: '#{result.inspect}'"
+              $stderr.puts "#{mys} result: '#{result.inspect}'"
               result
           end
-          puts "split result: #{sresult.inspect} +++"
+          $stderr.puts "split result: #{sresult.inspect} +++"
         }.resume
 
       end
