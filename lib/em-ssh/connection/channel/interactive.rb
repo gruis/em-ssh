@@ -115,10 +115,10 @@ module EventMachine
           def wait_for(strregex, opts = { })
             ###
             log = opts[:log] || NullLogger.new
-            timeout = opts[:timeout].is_a?(Fixnum) ? opts[:timeout] : DEFAULT_TIMEOUT
+            timeout_value = opts[:timeout].is_a?(Fixnum) ? opts[:timeout] : DEFAULT_TIMEOUT
             ###
-            log.debug("wait_for(#{strregex.inspect}, :timeout => #{opts[:timeout] || @timeout})")
-            opts          = { :timeout => @timeout }.merge(opts)
+            log.debug("wait_for(#{strregex.inspect}, :timeout => #{timeout_value})")
+            opts          = { :timeout => timeout_value }.merge(opts)
             found         = nil
             f             = Fiber.current
             trace         = caller
@@ -127,7 +127,7 @@ module EventMachine
             matched       = false
             started       = Time.new
 
-            timeout = proc do
+            timeout_proc = proc do
               data_callback && data_callback.cancel
               f.resume(TimeoutError.new("#{connection.host}: inactivity timeout (#{opts[:timeout]}) while waiting for #{strregex.inspect}; received: #{buffer.inspect}; waited total: #{Time.new - started}"))
             end
@@ -144,14 +144,14 @@ module EventMachine
                 @buffer = matched.post_match
                 f.resume(matched.pre_match + matched.to_s)
               else
-                timer = EM::Timer.new(opts[:timeout], &timeout)
+                timer = EM::Timer.new(opts[:timeout], &timeout_proc)
               end
             end
 
             # Check against current buffer
             EM::next_tick { data_callback.call() if buffer.length > 0 }
 
-            timer = EM::Timer.new(opts[:timeout], &timeout)
+            timer = EM::Timer.new(opts[:timeout], &timeout_proc)
             Fiber.yield.tap do |res|
               if res.is_a?(Exception)
                 res.set_backtrace(Array(res.backtrace) + trace)
