@@ -6,6 +6,10 @@ module EventMachine
       class Channel
         class NullLogger < ::Logger
 
+          def initialize
+            super(nil)
+          end
+
           def add(*params, &block)
             nil
           end
