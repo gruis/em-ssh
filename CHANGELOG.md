@@ -1,3 +1,7 @@
+0.5.1
+ - [#21](https://github.com/simulacre/em-ssh/pull/22) - Fix em-ssh throws exception when no logger is defined [@mandre](https://github.com/mandre)
+ - [#20](https://github.com/simulacre/em-ssh/pull/20) - Fix Interactive timeout wasn't set if parameter not fed [@freakhill](https://github.com/freakhill)
+
 0.5.0
  - Shell an Connection instances can have their own Loggers 
  - [#18](https://github.com/simulacre/em-ssh/pull/18) - Target devices and options for specs can be configured through environment variables [@freakhill](https://github.com/freakhill)
