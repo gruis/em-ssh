@@ -128,7 +128,10 @@ module EventMachine
           instance_variable_set(iv, nil)
         end
 
-        fail(NegotiationTimeout.new(@host)) if failed_timeout
+        if failed_timeout
+          fail(@disconnect ? EM::Ssh::Disconnect.from_packet(@disconnect) : NegotiationTimeout.new(@host))
+
+        end
       end
 
       def receive_data(data)
@@ -289,6 +292,7 @@ module EventMachine
           while (packet = @socket.poll_next_packet)
             case packet.type
             when DISCONNECT
+              @disconnect = packet
               close_connection
             when IGNORE
               debug("IGNORE packet received: #{packet[:data].inspect}")

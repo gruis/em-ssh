@@ -28,7 +28,47 @@ module EventMachine
     class ConnectionTerminated < SshError; end
     # The server failed to negotiate an ssh protocol version
     class NegotiationTimeout < ConnectionFailed; end
+    class Disconnect < SshError
+      class HostNotAllowedToConnect < Disconnect; end
+      class ProtocolError < Disconnect; end
+      class KeyExchangeFailed < Disconnect; end
+      class Reserved < Disconnect; end
+      class MacError < Disconnect; end
+      class CompressionError < Disconnect; end
+      class ServiceNotAvailable < Disconnect; end
+      class ProtocolVersionNotSupported < Disconnect; end
+      class HostKeyNotVerifiable < Disconnect; end
+      class ConnectionLost < Disconnect; end
+      class ByApplication < Disconnect; end
+      class TooManyConnections < Disconnect; end
+      class AuthCancelledByUser < Disconnect; end
+      class NoMoreAuthMethodsAvailable < Disconnect; end
+      class IllegalUserName < Disconnect; end
 
+      CODES = [
+        Disconnect,
+        HostNotAllowedToConnect,
+        ProtocolError,
+        KeyExchangeFailed,
+        Reserved,
+        MacError,
+        CompressionError,
+        ServiceNotAvailable,
+        ProtocolVersionNotSupported,
+        HostKeyNotVerifiable,
+        ConnectionLost,
+        ByApplication,
+        TooManyConnections,
+        AuthCancelledByUser,
+        NoMoreAuthMethodsAvailable,
+        IllegalUserName,
+      ]
+      class << self
+        def from_packet(packet)
+          (CODES[packet[:reason_code]] || Disconnect).new(packet[:description])
+        end
+      end
+    end # class::Disconnect < SshError
 
     class << self
       attr_writer :logger
