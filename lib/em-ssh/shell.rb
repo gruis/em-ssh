@@ -155,6 +155,7 @@ module EventMachine
           Fiber.new { yield(self) if block_given? }.resume
           f.resume(self)
         end
+        @on_open_err = proc { |e| f.resume(e) }
         open!
         return Fiber.yield.tap { |r| raise r if r.is_a?(Exception) }
       end
@@ -166,7 +167,7 @@ module EventMachine
         @opening = true
         begin
           connect
-          session.open_channel do |channel|
+          chan = session.open_channel do |channel|
             debug "**** channel open: #{channel}"
             channel.request_pty(options[:pty] || {}) do |pty,suc|
               debug "***** pty open: #{pty}; suc: #{suc}"
@@ -186,6 +187,9 @@ module EventMachine
               end # |shell,success|
             end # |pty,suc|
           end # |channel|
+          chan.on_open_failed do |chan, code, desc|
+            @on_open_err && @on_open_err[ChannelOpenFailed.from_code(code, desc)]
+          end
         rescue => e
           @opening = false
           raise ConnectionError.new("failed to create shell for #{host}: #{e} (#{e.class})")
@@ -236,7 +240,7 @@ module EventMachine
         fire(:split, child)
         if block_given?
           # requires that the caller be in a Fiber
-          child.open rescue child.fail($!)
+          child.open
           yield(child).tap { child.close }
         else
           child

@@ -70,6 +70,27 @@ module EventMachine
       end
     end # class::Disconnect < SshError
 
+    class ChannelOpenFailed < Net::SSH::ChannelOpenFailed
+      include Error
+      class AdministrativelyProhibited < ChannelOpenFailed; end
+      class ConnectFailed < ChannelOpenFailed; end
+      class UnknownChannelType < ChannelOpenFailed; end
+      class ResourceShortage < ChannelOpenFailed; end
+      CODES = [
+        ChannelOpenFailed,
+        AdministrativelyProhibited,
+        ConnectFailed,
+        UnknownChannelType,
+        ResourceShortage
+      ]
+      class << self
+        def from_code(code, desc)
+          (CODES[code] || ChannelOpenFailed).new(code, desc)
+        end
+      end
+    end
+
+
     class << self
       attr_writer :logger
       # Creates a logger when necessary
