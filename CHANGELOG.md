@@ -1,3 +1,8 @@
+0.6.0
+ - Disconnect error codes are converted to Ruby exceptions and raised
+ - ChannelOpen error codes are converted to Ruby exceptions and raised
+ - Shell#split will detect ChannelOpen errors and raise an Exception
+
 0.5.1
  - [#21](https://github.com/simulacre/em-ssh/pull/22) - Fix em-ssh throws exception when no logger is defined [@mandre](https://github.com/mandre)
  - [#20](https://github.com/simulacre/em-ssh/pull/20) - Fix Interactive timeout wasn't set if parameter not fed [@freakhill](https://github.com/freakhill)

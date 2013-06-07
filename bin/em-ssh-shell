@@ -62,20 +62,29 @@ EM.run do
 
     shell.callback do 
       commands.clone.each do |command|
+
         mys = shell.split
+        mys.errback do |err|
+          $stderr.puts "subshell error: #{err} (#{err.class})"
+          mys.close
+        end
+
         mys.on(:closed) do
           commands.delete(command)
           EM.stop if commands.empty?
         end
 
         puts("waiting for: #{waitstr.inspect}")
-        mys.expect(waitstr) do 
-          puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
-          mys.expect(waitstr, command) do |result|
-            puts "#{mys} result: '#{result}'"
-            mys.close
+        mys.callback do
+          mys.expect(waitstr) do 
+            puts "sending #{command.inspect} and waiting for #{waitstr.inspect}"
+            mys.expect(waitstr, command) do |result|
+              puts "#{mys} result: '#{result}'"
+              mys.close
+            end 
           end 
-        end 
+        end
+
       end 
     end 
   end 
