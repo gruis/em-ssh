@@ -129,7 +129,7 @@ module EventMachine
 
             timeout_proc = proc do
               data_callback && data_callback.cancel
-              f.resume(TimeoutError.new("#{connection.host}: inactivity timeout (#{opts[:timeout]}) while waiting for #{strregex.inspect}; received: #{buffer.inspect}; waited total: #{Time.new - started}"))
+              f.resume(TimeoutError.new("#{@host}: inactivity timeout (#{opts[:timeout]}) while waiting for #{strregex.inspect}; received: #{buffer.inspect}; waited total: #{Time.new - started}"))
             end
 
             data_callback = on(:data) do

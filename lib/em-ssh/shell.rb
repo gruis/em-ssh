@@ -87,8 +87,12 @@ module EventMachine
         # TODO make all methods other than #callback and #errback inaccessible until connected? == true
         yield self if block_given?
         Fiber.new {
-          open rescue fail($!)
-          succeed(self) if connected? && !closed?
+          begin
+            open
+            succeed(self) if connected? && !closed?
+          rescue => e
+            fail(e)
+          end
         }.resume
       end
 
