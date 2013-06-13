@@ -1,3 +1,6 @@
+0.6.1
+ - Allow Shell#buffer to be cleared
+
 0.6.0
  - Disconnect error codes are converted to Ruby exceptions and raised
  - ChannelOpen error codes are converted to Ruby exceptions and raised

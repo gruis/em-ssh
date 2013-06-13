@@ -45,8 +45,15 @@ module EventMachine
 
           # @returns[#to_s] Returns a #to_s object describing the dump of the content of the buffers used by
           #                 the methods of the interactive module mixed in the host object.
-          def dump_buffers
+          def dump_buffer
             @buffer.dump
+          end
+          # API compatibility with 0.6.0
+          alias :dump_buffers :dump_buffer
+
+          # Remove any data currently in the buffer.
+          def clear_buffer!
+            @buffer = ''
           end
 
           # Wait for a number of seconds until a specified string or regexp is matched by the

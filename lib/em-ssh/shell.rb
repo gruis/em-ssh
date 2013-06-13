@@ -184,7 +184,7 @@ module EventMachine
                   @shell  = shell
                   shell.extend(EventMachine::Ssh::Connection::Channel::Interactive)
                   shell.line_terminator = @line_terminator if @line_terminator
-                  shell.on(:data) { |data| debug("#{shell.dump_buffers}") }
+                  shell.on(:data) { |data| debug("#{shell.dump_buffer}") }
                   set_open_status(self)
                 end
                 @opening     = false
@@ -338,6 +338,11 @@ module EventMachine
       def wait_for(strregex, opts = { })
         assert_channel!
         shell.wait_for(strregex, {:timeout => @timeout, :log => self }.merge(opts))
+      end
+
+      # Remove any data in the buffer.
+      def clear_buffer!
+        shell.clear_buffer!
       end
 
       def debug(msg = nil, &blk)
