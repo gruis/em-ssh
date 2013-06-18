@@ -1,3 +1,6 @@
+0.6.2
+- [#24](https://github.com/simulacre/em-ssh/pull/24) - Fix callbacks defined on EM::Ssh::Shell don't work [@mandre](https://github.com/mandre)
+
 0.6.1
  - Allow Shell#buffer to be cleared
 
