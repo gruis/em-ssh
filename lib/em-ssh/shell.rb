@@ -183,6 +183,8 @@ module EventMachine
                   @closed = false
                   @shell  = shell
                   shell.extend(EventMachine::Ssh::Connection::Channel::Interactive)
+                  # Share callbacks with shell
+                  send(:callbacks=, shell.callbacks)
                   shell.line_terminator = @line_terminator if @line_terminator
                   shell.on(:data) { |data| debug("#{shell.dump_buffer}") }
                   set_open_status(self)

@@ -25,6 +25,10 @@ module EventMachine
         @clbks ||= {}
       end # callbacks
 
+      def callbacks=(clbks)
+        @clbks = clbks
+      end
+
 
       # Signal that an event has occured.
       # Each callback will receive whatever args are passed to fire, or the object that the event was fired upon.
