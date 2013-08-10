@@ -1,3 +1,6 @@
+0.6.3
+- [#25](https://github.com/simulacre/em-ssh/issues/25) - Failed negotiations are properly caught
+
 0.6.2
 - [#24](https://github.com/simulacre/em-ssh/pull/24) - Fix callbacks defined on EM::Ssh::Shell don't work [@mandre](https://github.com/mandre)
 
