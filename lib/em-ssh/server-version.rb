@@ -23,13 +23,14 @@ module EventMachine
           if @version[-1] == "\n"
             @version.chomp!
             log.debug("server version: #{@version}")
-            unless @version.match(/^SSH-(1\.99|2\.0)-/)
-              return connection.fire(:error, SshError.new("incompatible SSH version `#{@version}'"))
+            if !@version.match(/^SSH-(1\.99|2\.0)-/)
+              connection.fire(:error, SshError.new("incompatible SSH version `#{@version}'"))
+            else
+              log.debug("local version: #{Net::SSH::Transport::ServerVersion::PROTO_VERSION}")
+              connection.send_data("#{Net::SSH::Transport::ServerVersion::PROTO_VERSION}\r\n")
+              cb.cancel
+              connection.fire(:version_negotiated)
             end
-            log.debug("local version: #{Net::SSH::Transport::ServerVersion::PROTO_VERSION}")
-            connection.send_data("#{Net::SSH::Transport::ServerVersion::PROTO_VERSION}\r\n")
-            cb.cancel
-            connection.fire(:version_negotiated)
           end # @header[-1] == "\n"
         end #  |data|
       end
