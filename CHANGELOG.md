@@ -1,3 +1,6 @@
+0.6.4
+- [#24](https://github.com/simulacre/em-ssh/issues/24) - Don't zap Em::Ssh::Shell callbacks when sharing them with Net::Ssh::Connection::Channel
+
 0.6.3
 - [#25](https://github.com/simulacre/em-ssh/issues/25) - Failed negotiations are properly caught
 
