@@ -1,3 +1,6 @@
+0.6.5
+- [#26](https://github.com/simulacre/em-ssh/issues/26) - Remove echo binary
+
 0.6.4
 - [#24](https://github.com/simulacre/em-ssh/issues/24) - Don't zap Em::Ssh::Shell callbacks when sharing them with Net::Ssh::Connection::Channel
 
