@@ -19,8 +19,9 @@ module EventMachine
         cb = connection.on(:data) do |data|
           log.debug("#{self.class}.on(:data, #{data.inspect})")
           @version << data
-          @header = @version.clone
-          if @version[-1] == "\n"
+          if @version.include?("\n")
+            @version, _ = @version.split("\n", 2)
+            @header     = version.clone + "\n"
             @version.chomp!
             log.debug("server version: #{@version}")
             if !@version.match(/^SSH-(1\.99|2\.0)-/)

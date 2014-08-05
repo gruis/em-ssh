@@ -216,6 +216,12 @@ module EventMachine
                 end # auth.authenticate("ssh-connection", user, options[:password])
               end.resume # Fiber
             end # :algo_init
+
+            # Some ssh servers, e.g. DropBear send the algo data immediately after sending the server version
+            # string without waiting for the client. In those cases the data buffer will now contain the algo
+            # strings, so we can't wait for the next call to #receive_data. We simulate it here to move the
+            # process forward.
+            receive_data("") unless @data.eof?
           end # :version_negotiated
 
         rescue Exception => e
