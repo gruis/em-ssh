@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+
+# Simple utility to print debug data for connection establishment to a remote server. Use
+# this script when em-ssh is failing to properly connect to a remote server. The debug
+# information can be used to troubleshoot the connection, or included in an issue ticket.
+
+require "bundler/setup"
+require 'eventmachine'
+require 'em-ssh/shell'
+
+def abort(msg)
+  puts msg
+  Process.exit
+end
+
+options = {
+    :prompt  => /[\-\w]# /,
+    :port => 22
+  }
+
+opts    = OptionParser.new
+opts.banner += " [user:[password]@]host[:port]"
+opts.on('-u', '--user String', String) { |u| options[:user] = u }
+opts.on('-p', '--password [String]', String) do |p|
+  options[:password] = p.nil? ? HighLine.new.ask("password: "){|q| q.echo = "*" } : p
+end
+opts.on('--prompt String', "Shell prompt [#{options[:prompt]}] to expect from the remote server") do |p|
+  options[:prompt] = p
+end
+opts.parse!
+
+host = ARGV.shift || abort("a host is required")
+
+options[:user], host               = *host.split('@') if host.include?('@')
+options[:user], options[:password] = *options[:user].split(':') if options[:user] && options[:user].include?(':')
+host, options[:port]               = *host.split(':') if host.include?(':')
+options[:user]                     = ENV['USER'] unless options[:user]
+options[:password]                 = HighLine.new.ask("#{options[:user]}'s password: "){|q| q.echo = "*" } unless options[:password]
+
+EM.run do
+  options[:logger] = EM::Ssh.logger(Logger::DEBUG)
+  EM::Ssh::Shell.new(host, options[:user], options[:password], options) do |shell|
+    shell.callback do
+      shell.expect(options[:prompt], :timeout => 10)
+      EM.stop
+    end
+    shell.errback do |err|
+      $stderr.puts "error: #{err} (#{err.class})"
+      EM.stop
+    end
+  end
+end
+
