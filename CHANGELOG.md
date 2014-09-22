@@ -1,3 +1,6 @@
+0.7.0
+- [88323761c67c433bd46fedfd042ae9a97b726cb6](https://github.com/simulacre/em-ssh/commit/88323761c67c433bd46fedfd042ae9a97b726cb6) - Deal with ssh servers that send algo data and server version at the same time (Dropbear). Discovered by [@mandre](https://github.com/mandre)
+
 0.6.5
 - [#26](https://github.com/simulacre/em-ssh/issues/26) - Remove echo binary
 
