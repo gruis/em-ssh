@@ -42,14 +42,20 @@ module EventMachine
         # channel localy and the connection will just spin.
         if transport.closed?
           channels.each do |id, c|
+            # remove the connection reference to facilitate Garbage Collection
             c.instance_variable_set(:@connection, nil)
           end
           channels.clear
         else
-          channels.each { |id, channel| channel.close }
+          channels.each do |id, channel|
+            channel.close
+            # force one last pass through the channel's send loop, so that
+            # net-ssh will properly set the values for local_closed
+            channel.process
+          end
           loop { channels.any? && !transport.closed?  }
         end
-        # remove the reference to the connection to facilitate Garbage Collection
+        # remove the reference to the transport to facilitate Garbage Collection
         transport, @transport = @transport, nil
         @listeners.clear
         transport.close
@@ -72,11 +78,14 @@ module EventMachine
           # at some point we should override Channel#enqueue_pending_output, etc.,.
           channels.each { |id, channel| channel.process unless channel.closing? }
         end
-      end # register_callbacks
+      end
 
       def channel_close(packet)
         channel = channels[packet[:local_id]]
         super(packet).tap do
+          # force one last pass through the channel's send loop, so that
+          # net-ssh will properly set the values for local_closed
+          channel.process
           # remove the connection reference to facilitate Garbage Collection
           channel.instance_variable_set(:@connection, nil)
         end
@@ -89,7 +98,6 @@ module EventMachine
           channel.instance_variable_set(:@connection, nil)
         end
       end
-
-    end # class::Session
-  end # class::Ssh
-end # module::EventMachine
+    end
+  end
+end

@@ -130,7 +130,6 @@ module EventMachine
 
         if failed_timeout
           fail(@disconnect ? EM::Ssh::Disconnect.from_packet(@disconnect) : NegotiationTimeout.new(@host))
-
         end
       end
 
@@ -141,8 +140,9 @@ module EventMachine
       end
 
       def connection_completed
-        @contimeout.cancel
-        @nocon.cancel
+        [@contimeout, @nocon].each(&:cancel)
+        @contimeout = nil
+        @nocon = nil
       end
 
       def initialize(options = {})
@@ -248,6 +248,14 @@ module EventMachine
         end #  |string|
       end # host_as_string
 
+      # Taken from Net::SSH::Transport::Session
+      def host_keys
+        @host_keys ||= begin
+          known_hosts = options.fetch(:known_hosts, Net::SSH::KnownHosts)
+          known_hosts.search_for(options[:host_key_alias] || host_as_string, options)
+        end
+      end
+
       alias :logger :log
 
 
@@ -351,6 +359,6 @@ module EventMachine
           end # paranoid.respond_to?(:verify)
         end # paranoid
       end # select_host_key_verifier(paranoid)
-    end # class::Connection < EventMachine::Connection
-  end # module::Ssh
-end # module::EventMachine
+    end
+  end
+end

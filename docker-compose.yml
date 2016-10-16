@@ -1,0 +1,17 @@
+version: '2'
+services:
+  ssh_one:
+    image: krlmlr/debian-ssh:wheezy
+    container_name: emssh_one
+    ports:
+      - "2222:22"
+    environment:
+      - SSH_KEY
+  ssh_two:
+    image: krlmlr/debian-ssh:wheezy
+    container_name: emssh_two
+    ports:
+      - "2223:22"
+    environment:
+      - SSH_KEY
+

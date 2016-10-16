@@ -44,19 +44,20 @@ module EM
 
         ### remote server 1
         REMOTE1 = EnvElseHardcoded.new("REMOTE1_", self)
-        REMOTE1.add_field(:ip, '192.168.92.11')
-        REMOTE1.add_field(:username, 'caleb')
+        REMOTE1.add_field(:ip, '127.0.0.1')
+        REMOTE1.add_field(:username, 'docker')
+        REMOTE1.add_field(:port, 2222)
         REMOTE1.add_field(:prompt)
+
         ### remote server 2
         REMOTE2 = EnvElseHardcoded.new("REMOTE2_", self)
-        REMOTE2.add_field(:url, 'icaleb.org')
-        REMOTE2.add_field(:username, 'calebcrane')
-        REMOTE2.add_field(:prompt, ']$')
+        REMOTE2.add_field(:url, '127.0.0.1')
+        REMOTE2.add_field(:port, 2223)
+        REMOTE2.add_field(:username, 'docker')
+        REMOTE2.add_field(:prompt, '$')
         REMOTE2.add_field(:timeout, 5, &:to_i)
-        REMOTE2.add_field(:uname_a, "Linux icaleb 2.6.18-194.3.1.el5 #1 SMP Thu May 13 13:08:30 EDT 2010 x86_64 x86_64 x86_64 GNU/Linux\n")
-
-      end # module Constants
-
-    end # module Test
-  end # module Ssh
-end # module EM
+        REMOTE2.add_field(:uname_a, "4.4.22-moby #1 SMP Sun Sep 25 22:54:41 UTC 2016 x86_64 GNU/Linux")
+      end
+    end
+  end
+end
