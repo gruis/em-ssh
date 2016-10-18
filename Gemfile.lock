@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    em-ssh (0.7.0)
-      eventmachine (~> 1.2.0)
-      net-ssh (~> 3.2.0)
+    em-ssh (0.8.0)
+      eventmachine (~> 1.2)
+      net-ssh (~> 3.2)
 
 GEM
   remote: http://rubygems.org/
@@ -34,11 +34,11 @@ PLATFORMS
 
 DEPENDENCIES
   em-ssh!
-  highline
+  highline (~> 1.6)
   pry
   rspec (> 2.2.0)
   rspec-core (< 2.7.0)
-  ruby-termios
+  ruby-termios (~> 0.9)
 
 BUNDLED WITH
    1.12.5
