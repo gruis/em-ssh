@@ -14,7 +14,7 @@ module EventMachine
   #    end
   #  end
   class Ssh
-    DEFAULT_PORT = 22
+    DEFAULT_PORT = Net::SSH::Transport::Session::DEFAULT_PORT
 
     # Generic error tag
     module Error; end
@@ -93,6 +93,7 @@ module EventMachine
 
     class << self
       attr_writer :logger
+
       # Creates a logger when necessary
       # @return [Logger]
       def logger(level = Logger::WARN)
@@ -114,11 +115,17 @@ module EventMachine
       #      channel.request_pty(options[:pty] || {}) do |pty,suc|
       def connect(host, user, opts = {}, &blk)
         opts[:logger] || logger.debug("#{self}.connect(#{host}, #{user}, #{opts})")
-        options = { :host => host, :user => user, :port => DEFAULT_PORT }.merge(opts)
+
+        options = {
+          host: host,
+          user: user,
+          port: DEFAULT_PORT
+        }.merge(opts)
+
         EM.connect(options[:host], options[:port], Connection, options, &blk)
       end
       alias :start :connect
-    end # << self
+    end
 
     # Pull in the constants from Net::SSH::[Transport, Connection and Authentication]
     # and define them locally.
@@ -127,11 +134,11 @@ module EventMachine
     .each do |mod|
       mod.constants.each do |name|
         const_set(name, mod.const_get(name))
-      end #  |name|
-    end #  |module|
+      end
+    end
 
-  end # class::Ssh
-end # module::EventMachine
+  end
+end
 
 EM::P::Ssh = EventMachine::Ssh
 

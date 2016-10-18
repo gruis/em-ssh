@@ -78,7 +78,12 @@ module EventMachine
         @pass            = pass
         @options         = opts
         @logger          = opts[:logger] if opts[:logger]
-        @connect_opts    = {:password => pass, :port => 22, :auth_methods => ['publickey', 'password'], :logger => log}.merge(opts[:net_ssh] || {})
+        @connect_opts    = {
+          password: pass,
+          port: opts[:port] || 22,
+          auth_methods: ['publickey', 'password'],
+          logger: log
+        }.merge(opts[:net_ssh] || {})
         @session         = opts[:session]
         @parent          = opts[:parent]
         @children        = []

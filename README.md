@@ -3,7 +3,7 @@ Em-ssh is a net-ssh adapter for EventMachine. For the most part you can take any
 
 Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.com/) library. Please report any bugs with em-ssh to [https://github.com/simulacre/em-ssh/issues](https://github.com/simulacre/em-ssh/issues)
 ##Installation
-  gem install em-ssh 
+  gem install em-ssh
 
 ##Synopsis
 
@@ -18,38 +18,38 @@ EM.run do
     connection.callback do |ssh|
       # capture all stderr and stdout output from a remote process
       ssh.exec!('uname -a').tap {|r| puts "\nuname: #{r}"}
-    
+
       # capture only stdout matching a particular pattern
       stdout = ""
       ssh.exec!("ls -l /home") do |channel, stream, data|
         stdout << data if stream == :stdout
       end
       puts "\n#{stdout}"
-    
+
       # run multiple processes in parallel to completion
       ssh.exec('ping -c 1 www.google.com')
       ssh.exec('ping -c 1 www.yahoo.com')
       ssh.exec('ping -c 1 www.rakuten.co.jp')
-    
+
       #open a new channel and configure a minimal set of callbacks, then wait for the channel to finishes (closees).
       channel = ssh.open_channel do |ch|
         ch.exec "/usr/local/bin/ruby /path/to/file.rb" do |ch, success|
           raise "could not execute command" unless success
-    
+
           # "on_data" is called when the process writes something to stdout
           ch.on_data do |c, data|
             $stdout.print data
           end
-        
+
           # "on_extended_data" is called when the process writes something to stderr
           ch.on_extended_data do |c, type, data|
             $stderr.print data
           end
-        
+
           ch.on_close { puts "done!" }
         end
       end
-    
+
       channel.wait
 
       ssh.close
@@ -62,7 +62,7 @@ end
 See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/ssh/v2/api/index.html)
 
 ##Shell
- 
+
 Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
 
 ### Example
@@ -149,7 +149,7 @@ EM.run do
       commands.clone.each do |command|
         Fiber.new {
           # When given a block Shell#split will close the Shell after
-          # the block returns. If a block is given it must be called 
+          # the block returns. If a block is given it must be called
           # within a Fiber.
           sresult = shell.split do |mys|
             mys.on(:closed) do
@@ -184,6 +184,60 @@ See bin/em-ssh-shell for a more complex example usage of Shell.
 
 Em-ssh relies on Fibers. MRI 1.9.2-p290 on OSX Lion has been known to segfault when using Fibers.
 
+## Testing
+
+The specs for em-ssh require two accessible ssh servers. The quickest
+and most consistent way to get the servers up is to use Docker.
+
+Containers run from ``krlmlr/debian-ssh:wheezy`` will be accessible with
+users 'docker' and 'root'.
+
+If you have ``docker-compose`` installed:
+```shell
+SSH_KEY="$(cat ~/.ssh/id_rsa.pub)" docker-compose up
+```
+
+If you do not have ``docker-compose`` installed:
+```
+docker run -d -p 2222:22 -e SSH_KEY="$(cat ~/.ssh/id_rsa.pub)" krlmlr/debian-ssh:wheezy
+docker run -d -p 2223:22 -e SSH_KEY="$(cat ~/.ssh/id_rsa.pub)" krlmlr/debian-ssh:wheezy
+```
+
+Once the two containers are running just run the specs.
+
+```shell
+rspec spec
+```
+
+If you want to use different ssh servers for testing you'll need to
+update the variables in ``spec/constants.rb``
+
+If you need to debug failing tests you can change the verbosity of
+EM::Ssh:
+
+```shell
+VERBOSITY=DEBUG rspec spec
+```
+
+### Manual Testing
+
+You can also run manual tests using the executable in ``bin``.
+
+```shell
+bin/em-ssh-shell docker@localhost:2223 '$ ' 'ls -al' 'hostname' 'uname -a'
+```
+
+```shell
+be bin/em-ssh docker@localhost:2223
+```
+
+
+## Known Issues
+
+ - If the server's signature changes from the one recorded in your
+   ``known_hosts`` file ``EM::Ssh.start`` will hang
+ - ``bin/em-ssh`` and ``bin/em-ssh-shell`` will ask for passwords even
+   when one isn't required
 
 ##Copyright
 Copyright (c) 2011 Caleb Crane

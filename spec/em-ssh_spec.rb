@@ -1,7 +1,6 @@
 require 'em-ssh'
 require_relative "spec_helper"
 
-
 module EM::Ssh::Test
   include Constants
 
@@ -12,31 +11,33 @@ module EM::Ssh::Test
       EM::P::Ssh.should == EM::Ssh
       EM::Protocols::Ssh.should == EM::Ssh
     end
+
     it "should raise a ConnectionTimeout error when a connection can't be established before the given timeout" do
       expect {
         EM.run {
-          EM::Ssh.start(REMOTE1_IP, REMOTE1_USERNAME, :timeout => 1) do |ssh|
+          EM::Ssh.start(REMOTE1_IP, REMOTE1_USERNAME, port: REMOTE1_PORT,  timeout:  0.0000000001) do |ssh|
             ssh.callback { EM.stop }
             ssh.errback{|e| raise e }
           end
         }
-      }.to raise_error(EM::Ssh::ConnectionTimeout)
-    end # should raise a ConnectionTimeout error when a connection can't be established before the given timeout
+      }.to raise_error(EM::Ssh::NegotiationTimeout)
+    end
+
     it "should raise a ConnectionError when the address is invalid" do
       expect {
         EM.run {
-          EM::Ssh.start('0.0.0.1', 'caleb') do |ssh| # 0.0.0.1 is an invalid address
+          EM::Ssh.start('0.0.0.1', 'docker') do |ssh| # 0.0.0.1 is an invalid address
             ssh.callback { EM.stop }
             ssh.errback { |e| raise(e) }
           end
         }
       }.to raise_error(EM::Ssh::ConnectionFailed)
-    end # should raise a ConnectionFailed when the address is invalid
+    end
 
     it "should run exec! succesfully" do
       res = ""
       EM.run {
-        EM::Ssh.start(REMOTE2_URL, REMOTE2_USERNAME) do |con|
+        EM::Ssh.start(REMOTE2_URL, REMOTE2_USERNAME, port: REMOTE2_PORT) do |con|
           con.errback do |err|
             raise err
           end
@@ -47,7 +48,7 @@ module EM::Ssh::Test
           end
         end
       }
-      res.should == REMOTE2_UNAME_A
+      res.should include REMOTE2_UNAME_A
     end
-  end # EM::Ssh
-end # module::EM::Ssh::Test
+  end
+end
