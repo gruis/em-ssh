@@ -1,3 +1,6 @@
+0.8.0
+-	[b1f5774](https://github.com/simulacre/em-ssh/commit/b1f5774f10b2496063db5d52bab66b1871b2cd26) - net-ssh 3.2.0; em 1.2.0; docker for testing. Contributions from Kirill Timofeev
+
 0.7.0
 - [88323761c67c433bd46fedfd042ae9a97b726cb6](https://github.com/simulacre/em-ssh/commit/88323761c67c433bd46fedfd042ae9a97b726cb6) - Deal with ssh servers that send algo data and server version at the same time (Dropbear). Discovered by [@mandre](https://github.com/mandre)
 
@@ -26,10 +29,10 @@
  - [#20](https://github.com/simulacre/em-ssh/pull/20) - Fix Interactive timeout wasn't set if parameter not fed [@freakhill](https://github.com/freakhill)
 
 0.5.0
- - Shell an Connection instances can have their own Loggers 
+ - Shell an Connection instances can have their own Loggers
  - [#18](https://github.com/simulacre/em-ssh/pull/18) - Target devices and options for specs can be configured through environment variables [@freakhill](https://github.com/freakhill)
  - [#19](https://github.com/simulacre/em-ssh/pull/19) - Decouple interactive behavior from Shell allowing for other channels to be extended with #expect, etc., [@freakhill](https://github.com/freakhill)
-  
+
 0.4.2
  - Connection accepts :nego_timeout (seconds to wait for protocol and algorithm negotiation to finish)
  - If protocol, or algorithm negotiation fail #errback will be called
