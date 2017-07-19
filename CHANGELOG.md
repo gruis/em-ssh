@@ -1,3 +1,6 @@
+0.8.1
+- [#33](https://github.com/simulacre/em-ssh/pull/33) - Loosen net-ssh dependencies to permit > 3.2 [@kt97679](https://github.com/kt97679)
+
 0.8.0
 -	[b1f5774](https://github.com/simulacre/em-ssh/commit/b1f5774f10b2496063db5d52bab66b1871b2cd26) - net-ssh 3.2.0; em 1.2.0; docker for testing. Contributions from Kirill Timofeev
 
