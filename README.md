@@ -1,11 +1,11 @@
-#EM-SSH
+# EM-SSH
 Em-ssh is a net-ssh adapter for EventMachine. For the most part you can take any net-ssh code you have and run it in the EventMachine reactor.
 
 Em-ssh is not associated with the Jamis Buck's [net-ssh](http://net-ssh.github.com/) library. Please report any bugs with em-ssh to [https://github.com/simulacre/em-ssh/issues](https://github.com/simulacre/em-ssh/issues)
-##Installation
+## Installation
   gem install em-ssh
 
-##Synopsis
+## Synopsis
 
 ```ruby
 require "em-ssh"
@@ -61,7 +61,7 @@ end
 
 See [http://net-ssh.github.com/ssh/v2/api/index.html](http://net-ssh.github.com/ssh/v2/api/index.html)
 
-##Shell
+## Shell
 
 Em-ssh provides an expect-like shell abstraction layer on top of net-ssh in EM::Ssh::Shell
 
