@@ -345,11 +345,11 @@ module EventMachine
       def select_host_key_verifier(paranoid)
         case paranoid
         when true, nil then
-          Net::SSH::Verifiers::Lenient.new
+          Net::SSH::Verifiers::AcceptNewOrLocalTunnel.new
         when false then
-          Net::SSH::Verifiers::Null.new
+          Net::SSH::Verifiers::Never.new
         when :very then
-          Net::SSH::Verifiers::Strict.new
+          Net::SSH::Verifiers::AcceptNew.new
         else
           if paranoid.respond_to?(:verify)
             paranoid

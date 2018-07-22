@@ -18,7 +18,7 @@ require "rubygems"
   # If you have C extensions, uncomment this line
   # s.extensions = "ext/extconf.rb"
   s.add_dependency 'eventmachine', '~> 1.2'
-  s.add_dependency "net-ssh", '> 3.2'
+  s.add_dependency "net-ssh", '>= 5.0.2'
   # Not really necessary, but used in bin/em-ssh and bin/em-ssh-shell
   s.add_development_dependency 'ruby-termios', '~> 0.9'
   s.add_development_dependency "highline", '~> 1.6'
