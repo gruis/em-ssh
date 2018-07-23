@@ -4,9 +4,9 @@ require "rubygems"
   s.name                      = "em-ssh"
   s.version                   = EventMachine::Ssh::VERSION
   s.platform                  = ::Gem::Platform::RUBY
-  s.authors                   = ['Caleb Crane']
-  s.email                     = ['em-ssh@simulacre.org']
-  s.homepage                  = "http://github.com/simulacre/em-ssh"
+  s.authors                   = ['Caleb Crane', 'kt97679']
+  s.email                     = ['em-ssh@gru.is']
+  s.homepage                  = "http://github.com/gruis/em-ssh"
   s.summary                   = 'An EventMachine compatible net-ssh'
   s.description               = ''
   s.required_rubygems_version = ">= 1.3.6"
